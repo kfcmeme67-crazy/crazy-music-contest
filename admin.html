@@ -1,394 +1,223 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - CRAZY_MUSIC Tournament</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <style>
-    .tabs {
-      display: flex;
-      gap: 0;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 2rem;
-      overflow-x: auto;
+// ============================================================
+// BRACKET LOGIC - generazione e gestione del torneo a eliminazione
+// ============================================================
+
+/**
+ * Verifica se un numero è potenza di 2.
+ */
+export function isPowerOfTwo(n) {
+  return n > 0 && (n & (n - 1)) === 0;
+}
+
+/**
+ * Restituisce la più grande potenza di 2 minore o uguale a n.
+ * Es: 30 -> 16, 7 -> 4, 16 -> 16
+ */
+export function largestPowerOfTwo(n) {
+  let p = 1;
+  while (p * 2 <= n) p *= 2;
+  return p;
+}
+
+/**
+ * Mescola un array (Fisher-Yates). Non muta l'originale.
+ * Accetta un seed deterministico opzionale per debug.
+ */
+export function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Genera il bracket iniziale dato un array di canzoni.
+ * Le canzoni vengono accoppiate in ordine: [0,1], [2,3], [4,5]...
+ * Il numero di canzoni DEVE essere potenza di 2.
+ *
+ * Restituisce un oggetto bracket con questa struttura:
+ * {
+ *   size: 8,                          // numero canzoni
+ *   totalRounds: 3,                   // round totali (log2 size)
+ *   currentRound: 0,                  // round attivo
+ *   currentMatchIndex: 0,             // match attivo nel round
+ *   rounds: [
+ *     [ {a, b, winner: null}, {a, b, winner: null}, ... ],  // primo round
+ *     [ {a: null, b: null, winner: null}, ... ],            // semifinali
+ *     [ {a: null, b: null, winner: null} ]                  // finale
+ *   ],
+ *   winner: null,                     // canzone vincitrice
+ *   completed: false
+ * }
+ */
+export function createBracket(songs) {
+  if (!isPowerOfTwo(songs.length)) {
+    throw new Error(`Servono potenze di 2 canzoni, ricevute ${songs.length}`);
+  }
+
+  const totalRounds = Math.log2(songs.length);
+  const rounds = [];
+
+  // Primo round: accoppia le canzoni
+  const firstRound = [];
+  for (let i = 0; i < songs.length; i += 2) {
+    firstRound.push({
+      a: songs[i],
+      b: songs[i + 1],
+      winner: null
+    });
+  }
+  rounds.push(firstRound);
+
+  // Round successivi: match vuoti, verranno riempiti
+  let matchCount = firstRound.length / 2;
+  for (let r = 1; r < totalRounds; r++) {
+    const round = [];
+    for (let i = 0; i < matchCount; i++) {
+      round.push({ a: null, b: null, winner: null });
     }
+    rounds.push(round);
+    matchCount = matchCount / 2;
+  }
 
-    .tab {
-      padding: 0.875rem 1.5rem;
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.95rem;
-      font-weight: 500;
-      position: relative;
-      transition: color 0.2s;
-      white-space: nowrap;
+  return {
+    size: songs.length,
+    totalRounds,
+    currentRound: 0,
+    currentMatchIndex: 0,
+    rounds,
+    winner: null,
+    completed: false
+  };
+}
+
+/**
+ * Registra la scelta dell'utente nel match corrente e fa avanzare il bracket.
+ * winnerKey: "a" oppure "b"
+ *
+ * Restituisce il nuovo stato (immutabile rispetto all'originale).
+ */
+export function selectWinner(bracket, winnerKey) {
+  if (bracket.completed) return bracket;
+  if (winnerKey !== "a" && winnerKey !== "b") {
+    throw new Error("winnerKey deve essere 'a' o 'b'");
+  }
+
+  // Deep clone per immutabilità
+  const newBracket = JSON.parse(JSON.stringify(bracket));
+  const { currentRound, currentMatchIndex } = newBracket;
+  const match = newBracket.rounds[currentRound][currentMatchIndex];
+  const winner = match[winnerKey];
+
+  match.winner = winner;
+  match.winnerKey = winnerKey;
+
+  // Se NON è l'ultimo round, propaga il vincitore al round successivo
+  if (currentRound < newBracket.totalRounds - 1) {
+    const nextMatchIdx = Math.floor(currentMatchIndex / 2);
+    const nextSlot = currentMatchIndex % 2 === 0 ? "a" : "b";
+    newBracket.rounds[currentRound + 1][nextMatchIdx][nextSlot] = winner;
+  }
+
+  // Avanza al prossimo match
+  const isLastMatchInRound = currentMatchIndex === newBracket.rounds[currentRound].length - 1;
+  const isLastRound = currentRound === newBracket.totalRounds - 1;
+
+  if (isLastRound && isLastMatchInRound) {
+    // Torneo finito
+    newBracket.completed = true;
+    newBracket.winner = winner;
+  } else if (isLastMatchInRound) {
+    // Round finito, passa al prossimo
+    newBracket.currentRound++;
+    newBracket.currentMatchIndex = 0;
+  } else {
+    // Stesso round, prossimo match
+    newBracket.currentMatchIndex++;
+  }
+
+  return newBracket;
+}
+
+/**
+ * Restituisce il match correntemente da giocare, o null se finito.
+ */
+export function getCurrentMatch(bracket) {
+  if (bracket.completed) return null;
+  return bracket.rounds[bracket.currentRound][bracket.currentMatchIndex];
+}
+
+/**
+ * Calcola progresso percentuale (per progress bar).
+ */
+export function getProgress(bracket) {
+  const totalMatches = bracket.size - 1; // un torneo da N canzoni ha N-1 match
+  let played = 0;
+  for (const round of bracket.rounds) {
+    for (const m of round) {
+      if (m.winner) played++;
     }
+  }
+  return Math.round((played / totalMatches) * 100);
+}
 
-    .tab:hover {
-      color: var(--text-primary);
+/**
+ * Restituisce il nome leggibile del round corrente.
+ */
+export function getRoundName(bracket) {
+  const remaining = bracket.totalRounds - bracket.currentRound;
+  switch (remaining) {
+    case 1: return "Finale";
+    case 2: return "Semifinale";
+    case 3: return "Quarti di finale";
+    case 4: return "Ottavi di finale";
+    case 5: return "Sedicesimi";
+    default: return `Round ${bracket.currentRound + 1}`;
+  }
+}
+
+/**
+ * Estrae il ranking personale dell'utente da un bracket completato.
+ * Sistema di scoring per round vinto:
+ *   - 1° posto (vince finale): punti = totalRounds
+ *   - finaliste: punti = totalRounds - 1
+ *   - semifinaliste: punti = totalRounds - 2
+ *   ... e così via
+ *
+ * Restituisce: [{ songId, songData, points, eliminatedAt }, ...] ordinato per punti decrescenti
+ */
+export function getPersonalRanking(bracket) {
+  const ranking = new Map();
+
+  // Inizializza tutte le canzoni del primo round
+  for (const match of bracket.rounds[0]) {
+    if (match.a) ranking.set(match.a.id, { song: match.a, points: 0, eliminatedAt: 0 });
+    if (match.b) ranking.set(match.b.id, { song: match.b, points: 0, eliminatedAt: 0 });
+  }
+
+  // Per ogni round, chi VINCE ottiene (round+1) punti e avanza
+  for (let r = 0; r < bracket.rounds.length; r++) {
+    for (const match of bracket.rounds[r]) {
+      if (match.winner) {
+        const entry = ranking.get(match.winner.id);
+        if (entry) {
+          entry.points = r + 1;
+          entry.eliminatedAt = r + 1; // se vince anche il prossimo, verrà sovrascritto
+        }
+      }
     }
+  }
 
-    .tab.active {
-      color: var(--accent-cyan);
-    }
+  // Il vincitore finale ha eliminatedAt = totalRounds + 1 (mai eliminato)
+  if (bracket.winner) {
+    const winnerEntry = ranking.get(bracket.winner.id);
+    if (winnerEntry) winnerEntry.eliminatedAt = bracket.totalRounds + 1;
+  }
 
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .song-item {
-      display: grid;
-      grid-template-columns: 60px 1fr auto auto;
-      gap: 1rem;
-      align-items: center;
-      padding: 0.875rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-bottom: 0.625rem;
-    }
-
-    .song-item-cover {
-      width: 60px;
-      height: 60px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: var(--bg-tertiary);
-    }
-
-    .song-item-info input {
-      background: transparent;
-      border: 1px solid transparent;
-      padding: 0.25rem 0.5rem;
-      margin-bottom: 0.25rem;
-      font-size: 0.95rem;
-      width: 100%;
-    }
-
-    .song-item-info input:hover, .song-item-info input:focus {
-      border-color: var(--border);
-      background: var(--bg-secondary);
-    }
-
-    .song-item .title-input { font-weight: 600; }
-    .song-item .artist-input { font-size: 0.85rem; color: var(--text-secondary); }
-
-    .upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: 12px;
-      padding: 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .upload-zone:hover {
-      border-color: var(--accent-cyan);
-      background: rgba(255, 85, 0, 0.04);
-    }
-
-    .upload-zone.dragover {
-      border-color: var(--accent-cyan);
-      background: rgba(255, 85, 0, 0.08);
-    }
-
-    .asset-drop-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
-    }
-
-    .asset-drop {
-      min-height: 132px;
-      display: grid;
-      grid-template-columns: 76px 1fr;
-      gap: 1rem;
-      align-items: center;
-      padding: 1rem;
-      background: var(--bg-secondary);
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    }
-
-    .asset-drop:hover,
-    .asset-drop:focus-visible,
-    .asset-drop.dragover {
-      outline: none;
-      border-color: var(--accent-cyan);
-      background: rgba(255, 85, 0, 0.08);
-      box-shadow: 0 0 0 3px rgba(255, 85, 0, 0.12);
-    }
-
-    .asset-drop.has-file {
-      border-style: solid;
-      border-color: rgba(255, 85, 0, 0.7);
-    }
-
-    .asset-drop-preview {
-      width: 76px;
-      height: 76px;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background:
-        repeating-linear-gradient(90deg, rgba(255, 85, 0, 0.18) 0 3px, transparent 3px 8px),
-        var(--bg-tertiary);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--accent-cyan);
-      font-weight: 800;
-      font-size: 0.78rem;
-    }
-
-    .asset-drop-preview img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .asset-drop-title {
-      font-weight: 800;
-      margin-bottom: 0.25rem;
-    }
-
-    .asset-file-name {
-      color: var(--text-secondary);
-      font-size: 0.86rem;
-      overflow-wrap: anywhere;
-    }
-
-    .asset-path {
-      margin-top: 0.75rem;
-    }
-
-    .asset-note {
-      margin: 0.35rem 0 1rem;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    .asset-note code {
-      color: var(--text-secondary);
-      font-family: inherit;
-      font-weight: 700;
-      overflow-wrap: anywhere;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 1.25rem;
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .global-ranking-row {
-      display: grid;
-      grid-template-columns: 50px 60px 1fr auto auto;
-      gap: 1rem;
-      align-items: center;
-      padding: 0.875rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-bottom: 0.5rem;
-    }
-
-    .global-ranking-row.gold { border-color: var(--accent-yellow); }
-
-    .user-bracket-card {
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .user-bracket-card:hover {
-      border-color: var(--accent-cyan);
-    }
-  </style>
-</head>
-<body>
-  <nav class="navbar">
-    <a href="index.html" class="logo">CRAZY_MUSIC</a>
-    <nav id="navLinks"></nav>
-  </nav>
-
-  <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-      <h1 style="font-size: 2rem;">Pannello admin</h1>
-      <span class="badge badge-magenta">accesso riservato</span>
-    </div>
-
-    <div class="tabs">
-      <button class="tab active" data-tab="songs">Canzoni</button>
-      <button class="tab" data-tab="tournament">Torneo</button>
-      <button class="tab" data-tab="stats">Statistiche</button>
-      <button class="tab" data-tab="users">Bracket utenti</button>
-    </div>
-
-    <!-- TAB: CANZONI -->
-    <div class="tab-content active" id="tab-songs">
-      <h2 style="margin-bottom: 1rem;">Aggiungi una nuova canzone</h2>
-
-      <div class="card" style="margin-bottom: 2rem;">
-        <form id="uploadForm">
-          <div class="form-group">
-            <label class="label">Titolo</label>
-            <input type="text" id="songTitle" placeholder="es. MIAO MIAO ZBB ZBB" required>
-          </div>
-          <div class="form-group">
-            <label class="label">Artista</label>
-            <input type="text" id="songArtist" value="CRAZY_MUSIC" required>
-          </div>
-
-          <p class="asset-note">Upload su Firebase Storage: trascina MP3 e copertina. La copertina è opzionale: se manca usa song1/song2.</p>
-
-          <div class="asset-drop-grid">
-            <div class="form-group">
-              <label class="label">Copertina</label>
-              <div class="asset-drop" id="coverDrop" tabindex="0">
-                <input type="file" id="coverFileInput" accept="image/*" hidden>
-                <div class="asset-drop-preview" id="coverPreview">IMG</div>
-                <div>
-                  <div class="asset-drop-title">Trascina copertina</div>
-                  <div class="asset-file-name" id="coverFileName">JPG, PNG, WEBP</div>
-                </div>
-              </div>
-              <input class="asset-path" type="text" id="coverUrl" placeholder="Link copertina oppure vuoto per fallback song1/song2">
-            </div>
-            <div class="form-group">
-              <label class="label">Audio</label>
-              <div class="asset-drop" id="audioDrop" tabindex="0">
-                <input type="file" id="audioFileInput" accept="audio/*" hidden>
-                <div class="asset-drop-preview" id="audioPreview">MP3</div>
-                <div>
-                  <div class="asset-drop-title">Trascina audio</div>
-                  <div class="asset-file-name" id="audioFileName">MP3, WAV, M4A</div>
-                </div>
-              </div>
-              <input class="asset-path" type="text" id="audioUrl" placeholder="Link audio oppure carica file MP3" required>
-            </div>
-          </div>
-
-          <div id="uploadAlert"></div>
-
-          <button type="submit" class="btn btn-primary" id="uploadBtn">
-            Carica canzone
-          </button>
-        </form>
-      </div>
-
-      <h2 style="margin-bottom: 1rem;">Canzoni nel pool (<span id="songCount">0</span>)</h2>
-      <div id="songsList"></div>
-    </div>
-
-    <!-- TAB: TORNEO -->
-    <div class="tab-content" id="tab-tournament">
-      <h2 style="margin-bottom: 1rem;">Gestione torneo</h2>
-
-      <div id="tournamentAlert"></div>
-
-      <div class="card" style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Torneo attivo</h3>
-        <div id="activeTournamentInfo">
-          <p style="color: var(--text-secondary);">Nessun torneo attivo.</p>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-bottom: 1rem;">Crea nuovo torneo</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-          Selezionerà tutte le canzoni del pool. Il numero verrà arrotondato per difetto
-          alla potenza di 2 più vicina (es. 30 → 16 canzoni nel torneo).
-        </p>
-        <div class="form-group">
-          <label class="label">Nome torneo</label>
-          <input type="text" id="newTournamentName" placeholder="es. CRAZY_MUSIC SoundCloud contest">
-        </div>
-        <button class="btn btn-primary" id="createTournamentBtn">
-          Crea e attiva torneo
-        </button>
-      </div>
-    </div>
-
-    <!-- TAB: STATISTICHE GLOBALI -->
-    <div class="tab-content" id="tab-stats">
-      <h2 style="margin-bottom: 1rem;">Classifica aggregata globale</h2>
-      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        Punteggio = somma dei punti che ogni canzone ha ottenuto in tutti i bracket completati.
-        Una canzone guadagna punti pari al round in cui è stata eliminata (vincitrice del 1° round = 1 pt,
-        della finale = totale round).
-      </p>
-
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-label">Bracket completati</div>
-          <div class="stat-value" id="statBrackets">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Utenti totali</div>
-          <div class="stat-value" id="statUsers">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Canzoni nel pool</div>
-          <div class="stat-value" id="statSongs">—</div>
-        </div>
-      </div>
-
-      <h3 style="margin-bottom: 1rem;">Top canzoni (media globale)</h3>
-      <div id="globalRanking"></div>
-    </div>
-
-    <!-- TAB: BRACKET UTENTI -->
-    <div class="tab-content" id="tab-users">
-      <h2 style="margin-bottom: 1rem;">Bracket completati dagli utenti</h2>
-      <div id="userBrackets"></div>
-    </div>
-  </div>
-
-  <script type="module" src="js/admin.js"></script>
-</body>
-</html>
+  return [...ranking.values()].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    return b.eliminatedAt - a.eliminatedAt;
+  });
+}
