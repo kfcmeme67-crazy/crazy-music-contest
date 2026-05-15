@@ -105,8 +105,15 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 });
 
 async function loadSongs() {
-  const snap = await getDocs(query(collection(db, "songs"), orderBy("createdAt", "desc")));
+  const snap = await getDocs(collection(db, "songs"));
   const songs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  // Ordina localmente per createdAt decrescente (o title se manca)
+  songs.sort((a, b) => {
+    const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+    const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+    return timeB - timeA;
+  });
   document.getElementById("songCount").textContent = songs.length;
 
   const list = document.getElementById("songsList");
