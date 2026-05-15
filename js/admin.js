@@ -35,7 +35,50 @@ requireAdmin(async (profile) => {
   setupAssetDropZones();
   await loadSongs();
   await loadActiveTournament();
+  await autoPopulateSongs();
 });
+
+async function autoPopulateSongs() {
+  const list = document.getElementById("songsList");
+  // Se ci sono già canzoni, non fare nulla
+  if (list && list.children.length > 0 && !list.innerHTML.includes("Nessuna canzone")) return;
+  
+  const alertBox = document.getElementById("uploadAlert");
+  if (alertBox) alertBox.innerHTML = `<div class="alert alert-success">Sto auto-caricando le canzoni nel database, attendi...</div>`;
+  
+  const files = [
+    "ADELFIO SUSMINA.wav", "CRAZY PROF.m4a", "Dork's Revenge.mp3", "Dr jew.mp3", 
+    "DUFFYD THE KING .mp3", "EVERYBODY SU SLAVICA.mp3", "FANCULO AI COMUNISTI!!!.mp3", 
+    "FOR CHARLIE KIRK.wav", "geek.wav", "GOD DOG PIG GOD.wav", "GOOD BYE....mp3", 
+    "io sono Adolf.mp3", "Kaied the real SIGMA.mp3", "MAGREBINI NEL CESSO.mp3", 
+    "MONSTER.mp3", "MORIS vs ITIS.mp3", "P. D. C. T. G. R..mp3", "piadasus.mp3", 
+    "PICCHIARE TROIA.mp3", "PICCHIO UN TROIA (parodia⧸cover  gotta feeling).m4a", 
+    "PORCA-MADONNA FUNK.mp3", "SIGMA DELLE FISICA.mp3", "Slava.mp3", 
+    "VITALI LORE.mp3", "Vuk e il pelato.mp3", "Vuk e la ratto mobile.m4a", 
+    "Vuk e Paghera.mp3", "WASH UP, DAEDER.mp3"
+  ];
+
+  let count = 0;
+  for (const file of files) {
+    const title = file.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim().toUpperCase();
+    const songId = "song_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    const coverUrl = "assets/covers/" + (count % 2 === 0 ? "song1.svg" : "song2.svg");
+    const audioUrl = "assets/audio/" + file;
+    
+    await setDoc(doc(db, "songs", songId), {
+      id: songId,
+      title: title,
+      artist: "CRAZY_MUSIC",
+      coverUrl: coverUrl,
+      audioUrl: audioUrl,
+      createdAt: serverTimestamp()
+    });
+    count++;
+  }
+  
+  if (alertBox) alertBox.innerHTML = `<div class="alert alert-success">Ho caricato ${count} canzoni automaticamente! Ricarica la pagina.</div>`;
+  await loadSongs();
+}
 
 // ============================================================
 // TABS
