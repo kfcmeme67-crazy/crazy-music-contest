@@ -267,9 +267,7 @@ document.getElementById("createTournamentBtn").addEventListener("click", async (
       throw new Error("Servono almeno 2 canzoni nel pool");
     }
 
-    // Tronca alla potenza di 2 più vicina
-    const target = largestPowerOfTwo(songs.length);
-    songs = songs.slice(0, target);
+    // Non tronchiamo più, passiamo tutte le canzoni. I Jolly verranno aggiunti nel client.
 
     // Estrai solo i campi necessari (denormalizzato per non dover rifare query in gioco)
     const tournamentSongs = songs.map(s => ({
@@ -289,7 +287,7 @@ document.getElementById("createTournamentBtn").addEventListener("click", async (
     });
 
     alertBox.innerHTML = `<div class="alert alert-success">
-      Torneo "${escapeHtml(name)}" creato con ${target} canzoni!
+      Torneo "${escapeHtml(name)}" creato con ${songs.length} canzoni (eventuali Jolly verranno generati dal gioco)!
     </div>`;
     document.getElementById("newTournamentName").value = "";
     await loadActiveTournament();
