@@ -482,6 +482,17 @@ async function loadGlobalStats() {
 
   bSnap.docs.forEach(d => {
     const bracket = d.data().bracket;
+    
+    // Riconverti l'oggetto rounds in un vero array di array (fix per Firestore)
+    if (bracket && bracket.rounds && !Array.isArray(bracket.rounds)) {
+      const roundsArr = [];
+      const keys = Object.keys(bracket.rounds).sort((a, b) => Number(a) - Number(b));
+      for (const k of keys) {
+        roundsArr.push(bracket.rounds[k]);
+      }
+      bracket.rounds = roundsArr;
+    }
+
     const ranking = getPersonalRanking(bracket);
     ranking.forEach(entry => {
       const id = entry.song.id;

@@ -93,6 +93,17 @@ async function loadOrStartTournament() {
 
     if (bracketSnap.exists()) {
       const data = bracketSnap.data();
+      
+      // Riconverti l'oggetto rounds in un vero array di array (fix per Firestore)
+      if (data.bracket && data.bracket.rounds && !Array.isArray(data.bracket.rounds)) {
+        const roundsArr = [];
+        const keys = Object.keys(data.bracket.rounds).sort((a, b) => Number(a) - Number(b));
+        for (const k of keys) {
+          roundsArr.push(data.bracket.rounds[k]);
+        }
+        data.bracket.rounds = roundsArr;
+      }
+
       if (data.bracket.completed) {
         loadingEl.classList.add("hidden");
         alreadyPlayedEl.classList.remove("hidden");
@@ -145,18 +156,27 @@ async function startNew(tournament) {
 async function saveBracket() {
   try {
     const bracketId = `${currentUser.uid}_${currentTournamentId}`;
+    
+    // CLONA e converti l'array di array in un oggetto, altrimenti Firestore va in crash
+    const bracketToSave = JSON.parse(JSON.stringify(currentBracket));
+    const roundsObj = {};
+    for (let i = 0; i < bracketToSave.rounds.length; i++) {
+      roundsObj[i.toString()] = bracketToSave.rounds[i];
+    }
+    bracketToSave.rounds = roundsObj;
+
     await setDoc(doc(db, "brackets", bracketId), {
       userId: currentUser.uid,
       username: currentUser.username,
       tournamentId: currentTournamentId,
-      bracket: currentBracket,
+      bracket: bracketToSave,
       isPublic: true,
       likes: 0,
       updatedAt: serverTimestamp(),
       completedAt: currentBracket.completed ? serverTimestamp() : null
     }, { merge: true });
   } catch (e) {
-    throw new Error("Errore durante il SALVATAGGIO del bracket (creazione/aggiornamento): " + e.message);
+    throw new Error("Errore durante il SALVATAGGIO: " + e.message);
   }
 }
 
