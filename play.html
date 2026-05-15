@@ -1,95 +1,296 @@
-rules_version = '2';
-
-// ============================================================
-// REGOLE DI SICUREZZA FIRESTORE
-// ============================================================
-// Copia tutto questo file nella console Firebase:
-// Firestore Database -> Rules -> Pubblica
-// ============================================================
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Funzione helper: l'utente è admin?
-    function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gioca - CRAZY_MUSIC Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    /* STILI SPECIFICI PER LA SCHERMATA DI GIOCO */
+    .match-arena {
+      max-width: 900px;
+      margin: 0 auto;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    .round-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    .round-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff, var(--accent-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    // USERS: ognuno legge il proprio profilo. Admin legge tutti.
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      // Lettura della lista utenti solo per admin (per le statistiche)
-      allow list: if isAdmin();
-      // Creazione consentita al proprietario in fase di registrazione
-      allow create: if isOwner(userId) && request.resource.data.isAdmin == false;
-      // Update: nessuno può cambiare isAdmin da client (deve essere fatto in console)
-      allow update: if isOwner(userId) &&
-                       request.resource.data.isAdmin == resource.data.isAdmin;
-      allow delete: if false;
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #2a2a30;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 2rem;
     }
 
-    // USERNAMES: indice di unicità username
-    match /usernames/{username} {
-      allow read: if true; // serve per controllo duplicati in fase di registrazione
-      allow create: if isSignedIn() &&
-                       request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+      transition: width 0.4s ease;
+      box-shadow: none;
     }
 
-    // SONGS: lettura libera per utenti loggati, scrittura solo admin
-    match /songs/{songId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+    .match-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1.5rem;
+      align-items: center;
     }
 
-    // TOURNAMENTS: lettura per utenti loggati, scrittura solo admin
-    match /tournaments/{tournamentId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+    .vs-divider {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      text-shadow: none;
+      letter-spacing: 0.1em;
     }
 
-    // BRACKETS: ognuno gestisce il proprio. Lettura: il proprietario sempre,
-    // gli altri solo se isPublic. Admin legge tutto.
-    match /brackets/{bracketId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.isPublic == true ||
-        isAdmin()
-      );
-      // Per le query (list)
-      allow list: if isSignedIn();
-      // Creazione/update: solo il proprietario (il bracketId contiene l'uid)
-      allow create: if isSignedIn() &&
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && (
-        // Il proprietario può modificare quasi tutto MA non i likes
-        (resource.data.userId == request.auth.uid &&
-         request.resource.data.likes == resource.data.likes) ||
-        // Chiunque può incrementare/decrementare likes di 1 (con doc like associato)
-        (request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['likes']))
-      );
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    .song-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
     }
 
-    // LIKES: chiave = {userId}_{bracketId}, solo il proprietario
-    match /likes/{likeId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       likeId == request.auth.uid + "_" + request.resource.data.bracketId;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow update: if false;
+    .song-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255, 85, 0, 0.08), rgba(255, 122, 24, 0));
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 0;
+      border-radius: 6px;
     }
-  }
-}
+
+    .song-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .song-card:hover::before {
+      opacity: 1;
+    }
+
+    .song-card.selected {
+      border-color: var(--accent-cyan);
+      animation: winnerPulse 0.6s ease;
+    }
+
+    .song-card.eliminated {
+      opacity: 0.3;
+      transform: scale(0.95);
+      filter: grayscale(0.7);
+    }
+
+    @keyframes winnerPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); box-shadow: 0 16px 34px rgba(255, 85, 0, 0.28); }
+      100% { transform: scale(1); }
+    }
+
+    .song-cover {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #111114, var(--accent-cyan));
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .song-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .song-artist {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #111114;
+      padding: 0.625rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+
+    .play-btn {
+      background: var(--accent-cyan);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+
+    .play-btn:hover { transform: scale(1.1); }
+    .play-btn:active { transform: scale(0.95); }
+
+    .audio-progress {
+      flex: 1;
+      height: 22px;
+      background:
+        repeating-linear-gradient(90deg, #33333a 0 3px, transparent 3px 8px),
+        #24242a;
+      border-radius: 3px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .audio-progress-fill {
+      height: 100%;
+      background:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.58) 0 3px, transparent 3px 8px),
+        linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .audio-time {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    @media (max-width: 720px) {
+      .match-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      .vs-divider {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">CRAZY_MUSIC</a>
+    <nav id="navLinks"></nav>
+  </nav>
+
+  <div class="container">
+    <div id="loading" class="text-center">
+      <div class="spinner"></div>
+      <p style="color: var(--text-secondary);">Preparazione torneo...</p>
+    </div>
+
+    <div id="noTournament" class="hidden text-center" style="padding: 4rem 0;">
+      <h2 style="margin-bottom: 1rem;">Nessun torneo disponibile</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+        L'amministratore deve ancora caricare le canzoni.
+      </p>
+      <a href="index.html" class="btn btn-secondary">Torna alla home</a>
+    </div>
+
+    <div id="alreadyPlayed" class="hidden text-center" style="padding: 4rem 0;">
+      <h2 style="margin-bottom: 1rem;">Hai già completato il torneo!</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+        Puoi vedere il tuo risultato o rigiocare per ribaltare la classifica.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="results.html" class="btn btn-primary">Vedi il risultato</a>
+        <button id="restartBtn" class="btn btn-secondary">Rigioca da capo</button>
+      </div>
+    </div>
+
+    <div id="arena" class="hidden match-arena">
+      <div class="round-header">
+        <div class="round-name" id="roundName">Primo round</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem;">
+          Match <span id="matchNum">1</span> di <span id="matchTotal">8</span>
+        </div>
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+      </div>
+
+      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 1.5rem;">
+        Quale preferisci?
+      </p>
+
+      <div class="match-grid">
+        <div class="song-card" id="cardA" data-key="a">
+          <img class="song-cover" id="coverA" alt="">
+          <div class="song-title" id="titleA"></div>
+          <div class="song-artist" id="artistA"></div>
+          <div class="audio-controls">
+            <button class="play-btn" id="playA" type="button">▶</button>
+            <div class="audio-progress" id="progressA">
+              <div class="audio-progress-fill" id="progressFillA"></div>
+            </div>
+            <span class="audio-time" id="timeA">0:00</span>
+          </div>
+          <audio id="audioA" preload="metadata"></audio>
+        </div>
+
+        <div class="vs-divider">VS</div>
+
+        <div class="song-card" id="cardB" data-key="b">
+          <img class="song-cover" id="coverB" alt="">
+          <div class="song-title" id="titleB"></div>
+          <div class="song-artist" id="artistB"></div>
+          <div class="audio-controls">
+            <button class="play-btn" id="playB" type="button">▶</button>
+            <div class="audio-progress" id="progressB">
+              <div class="audio-progress-fill" id="progressFillB"></div>
+            </div>
+            <span class="audio-time" id="timeB">0:00</span>
+          </div>
+          <audio id="audioB" preload="metadata"></audio>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/play.js"></script>
+</body>
+</html>

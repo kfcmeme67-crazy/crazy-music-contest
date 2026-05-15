@@ -1,1 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accedi - CRAZY_MUSIC Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">CRAZY_MUSIC</a>
+  </nav>
 
+  <div class="container" style="max-width: 440px; padding-top: 4rem;">
+    <div class="card" style="padding: 2.5rem 2rem;">
+      <h2 style="margin-bottom: 0.5rem;">Accedi</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+        Bentornato! Inserisci le tue credenziali.
+      </p>
+
+      <div id="alertContainer"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="label" for="username">Username</label>
+          <input type="text" id="username" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="label" for="password">Password</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+          Entra
+        </button>
+      </form>
+
+      <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+        Non hai un account?
+        <a href="register.html" style="color: var(--accent-cyan); text-decoration: none; font-weight: 500;">Registrati</a>
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { loginUser, watchAuthState } from "./js/auth.js";
+
+    // Se già loggato, redirect
+    watchAuthState((profile) => {
+      if (profile) window.location.href = "play.html";
+    });
+
+    const form = document.getElementById("loginForm");
+    const alertBox = document.getElementById("alertContainer");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alertBox.innerHTML = "";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Caricamento...";
+
+      try {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        await loginUser(username, password);
+        window.location.href = "play.html";
+      } catch (err) {
+        let msg = "Username o password errati";
+        if (err.code === "auth/too-many-requests") msg = "Troppi tentativi, riprova più tardi";
+        alertBox.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Entra";
+      }
+    });
+  </script>
+</body>
+</html>

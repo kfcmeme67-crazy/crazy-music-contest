@@ -1,294 +1,118 @@
-// ============================================================
-// PLAY.JS - logica pagina di gioco
-// ============================================================
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRAZY_MUSIC Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">CRAZY_MUSIC</a>
+    <nav id="navLinks">
+      <!-- popolato da JS -->
+    </nav>
+  </nav>
 
-import { requireAuth, logoutUser } from "./auth.js";
-import { db } from "./firebase-config.js";
-import {
-  collection, query, where, orderBy, limit, getDocs,
-  doc, setDoc, getDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import {
-  createBracket, selectWinner, getCurrentMatch,
-  getProgress, getRoundName, isPowerOfTwo, largestPowerOfTwo, shuffle
-} from "./bracket.js";
+  <div class="container">
+    <section class="text-center" style="padding: 4rem 0 2rem;">
+      <div style="display: inline-flex; align-items: center; gap: 0.65rem; padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-cyan); background: rgba(255, 85, 0, 0.08); margin-bottom: 1.25rem; font-weight: 700; font-size: 0.85rem;">
+        SoundCloud reference: @crazy_music-270687487
+      </div>
+      <h1 style="font-size: clamp(2.35rem, 8vw, 3.5rem); margin-bottom: 1rem;">CRAZY_MUSIC<br>song tournament</h1>
+      <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 2.5rem;">
+        Vota i brani del profilo CRAZY_MUSIC in un torneo a eliminazione diretta.
+        Ascolta, scegli, elimina e trova la traccia piu forte.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="play.html" class="btn btn-primary" id="ctaPlay">
+          ▶ Inizia il torneo
+        </a>
+        <a href="rankings.html" class="btn btn-secondary">
+          🏆 Vedi le classifiche
+        </a>
+      </div>
+    </section>
 
-const loadingEl = document.getElementById("loading");
-const noTournamentEl = document.getElementById("noTournament");
-const alreadyPlayedEl = document.getElementById("alreadyPlayed");
-const arenaEl = document.getElementById("arena");
-const navLinks = document.getElementById("navLinks");
+    <section class="card soundcloud-profile-card" style="display: grid; grid-template-columns: minmax(220px, 0.85fr) 1.4fr; gap: 1.5rem; align-items: stretch; margin: 2rem auto 0; max-width: 980px;">
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <img src="https://i1.sndcdn.com/avatars-9tDUNEYeeIRy86oS-Vwszcw-t500x500.jpg" alt="CRAZY_MUSIC avatar" style="width: 92px; height: 92px; border-radius: 8px; object-fit: cover; border: 2px solid var(--accent-cyan); box-shadow: var(--glow-cyan);">
+        <div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800;">SoundCloud user</div>
+          <h2 style="margin: 0.25rem 0;">CRAZY_MUSIC</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Milan - 20 tracce pubbliche</p>
+          <a href="https://soundcloud.com/crazy_music-270687487" target="_blank" rel="noopener" style="display: inline-block; color: var(--accent-cyan); margin-top: 0.65rem; text-decoration: none; font-weight: 700;">Apri profilo SoundCloud</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; margin-bottom: 0.8rem;">Track reference</div>
+        <div style="display: grid; gap: 0.55rem;">
+          <div class="track-reference-row"><span>01</span><strong>PICCHIO UN TROIA (parodia/cover gotta feeling)</strong></div>
+          <div class="track-reference-row"><span>02</span><strong>MIAO MIAO ZBB ZBB</strong></div>
+          <div class="track-reference-row"><span>03</span><strong>BUK A CASO</strong></div>
+          <div class="track-reference-row"><span>04</span><strong>DANNI DA COKE</strong></div>
+          <div class="track-reference-row"><span>05</span><strong>P. D. C. T. G. R.</strong></div>
+        </div>
+      </div>
+    </section>
 
-let currentUser = null;
-let currentBracket = null;
-let currentTournamentId = null;
+    <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 3rem;">
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◇</div>
+        <h3>Scegli ad ogni round</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Due canzoni per volta, ascolta entrambe e clicca la tua preferita per farla avanzare.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◆</div>
+        <h3>Vinci la finale</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Arriva fino alla finale e scopri qual è la canzone che ti rappresenta di più.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◈</div>
+        <h3>Confronta con gli altri</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Condividi la tua classifica e metti like a quelle degli altri utenti.
+        </p>
+      </div>
+    </section>
+  </div>
 
-requireAuth(async (profile) => {
-  currentUser = profile;
-  renderNav(profile);
-  await loadOrStartTournament();
-});
+  <script type="module">
+    import { watchAuthState, logoutUser } from "./js/auth.js";
 
-function renderNav(profile) {
-  navLinks.innerHTML = `
-    <span style="color: var(--text-secondary); font-size: 0.85rem;">
-      ◉ ${profile.username}${profile.isAdmin ? ' <span class="badge badge-magenta">admin</span>' : ''}
-    </span>
-    <a href="rankings.html">Classifiche</a>
-    ${profile.isAdmin ? '<a href="admin.html">Admin</a>' : ''}
-    <a href="#" id="logoutBtn">Esci</a>
-  `;
-  document.getElementById("logoutBtn").addEventListener("click", async (e) => {
-    e.preventDefault();
-    await logoutUser();
-    window.location.href = "index.html";
-  });
-}
+    const navLinks = document.getElementById("navLinks");
+    const ctaPlay = document.getElementById("ctaPlay");
 
-/**
- * Logica principale: carica il torneo attivo e lo stato dell'utente.
- *
- * Comportamento:
- * 1. Cerca il torneo "active" più recente
- * 2. Se non esiste -> mostra "nessun torneo"
- * 3. Se l'utente ha già un bracket salvato per quel torneo:
- *    - se completed -> mostra "già giocato"
- *    - se in corso -> riprende da dove era
- * 4. Altrimenti crea un nuovo bracket e lo salva
- */
-async function loadOrStartTournament() {
-  // 1. Trova torneo attivo
-  const q = query(
-    collection(db, "tournaments"),
-    where("status", "==", "active"),
-    orderBy("createdAt", "desc"),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-
-  if (snap.empty) {
-    loadingEl.classList.add("hidden");
-    noTournamentEl.classList.remove("hidden");
-    return;
-  }
-
-  const tournamentDoc = snap.docs[0];
-  currentTournamentId = tournamentDoc.id;
-  const tournament = tournamentDoc.data();
-
-  // 2. Verifica se l'utente ha già un bracket per questo torneo
-  const bracketId = `${currentUser.uid}_${currentTournamentId}`;
-  const bracketRef = doc(db, "brackets", bracketId);
-  const bracketSnap = await getDoc(bracketRef);
-
-  if (bracketSnap.exists()) {
-    const data = bracketSnap.data();
-    if (data.bracket.completed) {
-      loadingEl.classList.add("hidden");
-      alreadyPlayedEl.classList.remove("hidden");
-      document.getElementById("restartBtn").addEventListener("click", () => startNew(tournament));
-      return;
-    }
-    // Riprende il bracket in corso
-    currentBracket = data.bracket;
-    showArena();
-    return;
-  }
-
-  // 3. Crea un nuovo bracket
-  await startNew(tournament);
-}
-
-async function startNew(tournament) {
-  loadingEl.classList.remove("hidden");
-  alreadyPlayedEl.classList.add("hidden");
-  arenaEl.classList.add("hidden");
-
-  let songs = tournament.songs || [];
-
-  // Tutti gli utenti giocano LE STESSE canzoni nello STESSO ORDINE
-  // (l'admin imposta l'ordine al momento dell'attivazione del torneo)
-  if (!isPowerOfTwo(songs.length)) {
-    // Fallback: prendi le prime N dove N è potenza di 2 più vicina
-    const target = largestPowerOfTwo(songs.length);
-    songs = songs.slice(0, target);
-  }
-
-  if (songs.length < 2) {
-    loadingEl.classList.add("hidden");
-    noTournamentEl.classList.remove("hidden");
-    return;
-  }
-
-  currentBracket = createBracket(songs);
-  await saveBracket();
-  showArena();
-}
-
-async function saveBracket() {
-  const bracketId = `${currentUser.uid}_${currentTournamentId}`;
-  await setDoc(doc(db, "brackets", bracketId), {
-    userId: currentUser.uid,
-    username: currentUser.username,
-    tournamentId: currentTournamentId,
-    bracket: currentBracket,
-    isPublic: true,
-    likes: 0,
-    updatedAt: serverTimestamp(),
-    completedAt: currentBracket.completed ? serverTimestamp() : null
-  }, { merge: true });
-}
-
-// ============================================================
-// RENDERING
-// ============================================================
-
-function showArena() {
-  loadingEl.classList.add("hidden");
-  alreadyPlayedEl.classList.add("hidden");
-  arenaEl.classList.remove("hidden");
-  renderCurrentMatch();
-}
-
-function renderCurrentMatch() {
-  if (currentBracket.completed) {
-    window.location.href = "results.html";
-    return;
-  }
-
-  const match = getCurrentMatch(currentBracket);
-  if (!match) {
-    window.location.href = "results.html";
-    return;
-  }
-
-  // Header
-  document.getElementById("roundName").textContent = getRoundName(currentBracket);
-  document.getElementById("matchNum").textContent = currentBracket.currentMatchIndex + 1;
-  document.getElementById("matchTotal").textContent =
-    currentBracket.rounds[currentBracket.currentRound].length;
-  document.getElementById("progressFill").style.width = getProgress(currentBracket) + "%";
-
-  // Card A
-  document.getElementById("titleA").textContent = match.a.title;
-  document.getElementById("artistA").textContent = match.a.artist;
-  document.getElementById("coverA").src = match.a.coverUrl;
-  document.getElementById("audioA").src = match.a.audioUrl;
-
-  // Card B
-  document.getElementById("titleB").textContent = match.b.title;
-  document.getElementById("artistB").textContent = match.b.artist;
-  document.getElementById("coverB").src = match.b.coverUrl;
-  document.getElementById("audioB").src = match.b.audioUrl;
-
-  // Reset stati visivi
-  document.getElementById("cardA").classList.remove("selected", "eliminated");
-  document.getElementById("cardB").classList.remove("selected", "eliminated");
-  resetAudio("A");
-  resetAudio("B");
-}
-
-// ============================================================
-// AUDIO PLAYER
-// ============================================================
-
-function setupAudio(letter) {
-  const audio = document.getElementById("audio" + letter);
-  const playBtn = document.getElementById("play" + letter);
-  const fill = document.getElementById("progressFill" + letter);
-  const time = document.getElementById("time" + letter);
-  const progressBar = document.getElementById("progress" + letter);
-
-  playBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    // Pausa l'altro audio
-    const other = letter === "A" ? "B" : "A";
-    const otherAudio = document.getElementById("audio" + other);
-    if (!otherAudio.paused) {
-      otherAudio.pause();
-      document.getElementById("play" + other).textContent = "▶";
-    }
-
-    if (audio.paused) {
-      audio.play();
-      playBtn.textContent = "❚❚";
-    } else {
-      audio.pause();
-      playBtn.textContent = "▶";
-    }
-  });
-
-  audio.addEventListener("timeupdate", () => {
-    if (audio.duration) {
-      fill.style.width = (audio.currentTime / audio.duration * 100) + "%";
-      time.textContent = formatTime(audio.currentTime);
-    }
-  });
-
-  audio.addEventListener("ended", () => {
-    playBtn.textContent = "▶";
-    fill.style.width = "0%";
-    time.textContent = formatTime(audio.duration || 0);
-  });
-
-  audio.addEventListener("loadedmetadata", () => {
-    time.textContent = formatTime(audio.duration || 0);
-  });
-
-  progressBar.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (!audio.duration) return;
-    const rect = progressBar.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    audio.currentTime = audio.duration * pct;
-  });
-}
-
-function resetAudio(letter) {
-  const audio = document.getElementById("audio" + letter);
-  audio.pause();
-  audio.currentTime = 0;
-  document.getElementById("play" + letter).textContent = "▶";
-  document.getElementById("progressFill" + letter).style.width = "0%";
-}
-
-function formatTime(s) {
-  if (!isFinite(s)) return "0:00";
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60).toString().padStart(2, "0");
-  return `${m}:${sec}`;
-}
-
-setupAudio("A");
-setupAudio("B");
-
-// ============================================================
-// SELEZIONE VINCITORE
-// ============================================================
-
-async function handleSelection(key) {
-  const winnerCard = key === "a" ? document.getElementById("cardA") : document.getElementById("cardB");
-  const loserCard = key === "a" ? document.getElementById("cardB") : document.getElementById("cardA");
-
-  winnerCard.classList.add("selected");
-  loserCard.classList.add("eliminated");
-
-  // Stoppa audio
-  resetAudio("A");
-  resetAudio("B");
-
-  // Aspetta l'animazione
-  await new Promise(r => setTimeout(r, 700));
-
-  currentBracket = selectWinner(currentBracket, key);
-  await saveBracket();
-
-  if (currentBracket.completed) {
-    window.location.href = "results.html";
-  } else {
-    renderCurrentMatch();
-  }
-}
-
-document.getElementById("cardA").addEventListener("click", () => handleSelection("a"));
-document.getElementById("cardB").addEventListener("click", () => handleSelection("b"));
+    watchAuthState((profile) => {
+      if (profile) {
+        navLinks.innerHTML = `
+          <span style="color: var(--text-secondary); font-size: 0.85rem;">
+            ◉ ${profile.username}${profile.isAdmin ? ' <span class="badge badge-magenta">admin</span>' : ''}
+          </span>
+          <a href="play.html">Gioca</a>
+          <a href="rankings.html">Classifiche</a>
+          ${profile.isAdmin ? '<a href="admin.html">Admin</a>' : ''}
+          <a href="#" id="logoutBtn">Esci</a>
+        `;
+        document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+          e.preventDefault();
+          await logoutUser();
+          window.location.reload();
+        });
+        ctaPlay.href = "play.html";
+      } else {
+        navLinks.innerHTML = `
+          <a href="login.html">Accedi</a>
+          <a href="register.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Registrati</a>
+        `;
+        ctaPlay.href = "login.html";
+      }
+    });
+  </script>
+</body>
+</html>
