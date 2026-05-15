@@ -233,7 +233,6 @@
       const tSnap = await getDocs(query(
         collection(db, "tournaments"),
         where("status", "==", "active"),
-        orderBy("createdAt", "desc"),
         limit(1)
       ));
 
@@ -255,6 +254,17 @@
       }
 
       const data = bSnap.data();
+      
+      // Riconverti l'oggetto rounds in un vero array di array (fix per Firestore)
+      if (data.bracket && data.bracket.rounds && !Array.isArray(data.bracket.rounds)) {
+        const roundsArr = [];
+        const keys = Object.keys(data.bracket.rounds).sort((a, b) => Number(a) - Number(b));
+        for (const k of keys) {
+          roundsArr.push(data.bracket.rounds[k]);
+        }
+        data.bracket.rounds = roundsArr;
+      }
+
       renderResults(data.bracket, data.isPublic);
       loadingEl.classList.add("hidden");
       resultEl.classList.remove("hidden");
