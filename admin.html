@@ -111,6 +111,90 @@
       background: rgba(255, 85, 0, 0.08);
     }
 
+    .asset-drop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .asset-drop {
+      min-height: 132px;
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    .asset-drop:hover,
+    .asset-drop:focus-visible,
+    .asset-drop.dragover {
+      outline: none;
+      border-color: var(--accent-cyan);
+      background: rgba(255, 85, 0, 0.08);
+      box-shadow: 0 0 0 3px rgba(255, 85, 0, 0.12);
+    }
+
+    .asset-drop.has-file {
+      border-style: solid;
+      border-color: rgba(255, 85, 0, 0.7);
+    }
+
+    .asset-drop-preview {
+      width: 76px;
+      height: 76px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(90deg, rgba(255, 85, 0, 0.18) 0 3px, transparent 3px 8px),
+        var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent-cyan);
+      font-weight: 800;
+      font-size: 0.78rem;
+    }
+
+    .asset-drop-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .asset-drop-title {
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+    }
+
+    .asset-file-name {
+      color: var(--text-secondary);
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+    }
+
+    .asset-path {
+      margin-top: 0.75rem;
+    }
+
+    .asset-note {
+      margin: 0.35rem 0 1rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .asset-note code {
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -200,14 +284,32 @@
             <input type="text" id="songArtist" value="CRAZY_MUSIC" required>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <p class="asset-note">Percorsi statici: <code>assets/covers/</code> e <code>assets/audio/</code>.</p>
+
+          <div class="asset-drop-grid">
             <div class="form-group">
-              <label class="label">URL copertina</label>
-              <input type="text" id="coverUrl" placeholder="assets/covers/copertina.jpg" required>
+              <label class="label">Copertina</label>
+              <div class="asset-drop" id="coverDrop" tabindex="0">
+                <input type="file" id="coverFileInput" accept="image/*" hidden>
+                <div class="asset-drop-preview" id="coverPreview">IMG</div>
+                <div>
+                  <div class="asset-drop-title">Trascina copertina</div>
+                  <div class="asset-file-name" id="coverFileName">JPG, PNG, WEBP</div>
+                </div>
+              </div>
+              <input class="asset-path" type="text" id="coverUrl" placeholder="assets/covers/copertina.jpg" required>
             </div>
             <div class="form-group">
-              <label class="label">URL audio</label>
-              <input type="text" id="audioUrl" placeholder="assets/audio/brano.mp3" required>
+              <label class="label">Audio</label>
+              <div class="asset-drop" id="audioDrop" tabindex="0">
+                <input type="file" id="audioFileInput" accept="audio/*" hidden>
+                <div class="asset-drop-preview" id="audioPreview">MP3</div>
+                <div>
+                  <div class="asset-drop-title">Trascina audio</div>
+                  <div class="asset-file-name" id="audioFileName">MP3, WAV, M4A</div>
+                </div>
+              </div>
+              <input class="asset-path" type="text" id="audioUrl" placeholder="assets/audio/brano.mp3" required>
             </div>
           </div>
 

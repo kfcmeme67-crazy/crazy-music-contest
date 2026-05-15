@@ -13,6 +13,7 @@ import { getPersonalRanking, largestPowerOfTwo } from "./bracket.js";
 
 const navLinks = document.getElementById("navLinks");
 let currentAdmin = null;
+let assetDropZonesReady = false;
 
 requireAdmin(async (profile) => {
   currentAdmin = profile;
@@ -31,6 +32,7 @@ requireAdmin(async (profile) => {
   });
 
   setupTabs();
+  setupAssetDropZones();
   await loadSongs();
   await loadActiveTournament();
 });
@@ -92,6 +94,7 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
     alertBox.innerHTML = `<div class="alert alert-success">Canzone aggiunta!</div>`;
     document.getElementById("uploadForm").reset();
+    resetAssetDropZones();
     await loadSongs();
   } catch (err) {
     alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
@@ -244,6 +247,146 @@ document.getElementById("createTournamentBtn").addEventListener("click", async (
     alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
 });
+
+// ============================================================
+// DRAG & DROP STATIC ASSETS
+// ============================================================
+
+const assetDropState = {
+  coverObjectUrl: null
+};
+
+function setupAssetDropZones() {
+  if (assetDropZonesReady) return;
+  assetDropZonesReady = true;
+
+  setupAssetDropZone({
+    dropId: "coverDrop",
+    fileInputId: "coverFileInput",
+    pathInputId: "coverUrl",
+    fileNameId: "coverFileName",
+    previewId: "coverPreview",
+    directory: "assets/covers/",
+    fallbackLabel: "JPG, PNG, WEBP",
+    kind: "cover"
+  });
+
+  setupAssetDropZone({
+    dropId: "audioDrop",
+    fileInputId: "audioFileInput",
+    pathInputId: "audioUrl",
+    fileNameId: "audioFileName",
+    previewId: "audioPreview",
+    directory: "assets/audio/",
+    fallbackLabel: "MP3, WAV, M4A",
+    kind: "audio"
+  });
+}
+
+function setupAssetDropZone(config) {
+  const drop = document.getElementById(config.dropId);
+  const fileInput = document.getElementById(config.fileInputId);
+  if (!drop || !fileInput) return;
+
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files?.[0]) handleAssetFile(fileInput.files[0], config);
+  });
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    drop.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      drop.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    drop.addEventListener(eventName, () => {
+      drop.classList.remove("dragover");
+    });
+  });
+
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const file = [...(e.dataTransfer?.files || [])].find(f => isExpectedAssetType(f, config.kind));
+    if (!file) {
+      showAssetDropError(config.kind);
+      return;
+    }
+    handleAssetFile(file, config);
+  });
+}
+
+function handleAssetFile(file, config) {
+  const pathInput = document.getElementById(config.pathInputId);
+  const fileName = document.getElementById(config.fileNameId);
+  const preview = document.getElementById(config.previewId);
+  const drop = document.getElementById(config.dropId);
+
+  pathInput.value = config.directory + encodeURIComponent(file.name);
+  fileName.textContent = file.name;
+  drop.classList.add("has-file");
+
+  if (config.kind === "cover") {
+    if (assetDropState.coverObjectUrl) URL.revokeObjectURL(assetDropState.coverObjectUrl);
+    assetDropState.coverObjectUrl = URL.createObjectURL(file);
+    preview.innerHTML = `<img src="${assetDropState.coverObjectUrl}" alt="">`;
+  } else {
+    preview.textContent = file.name.split(".").pop()?.slice(0, 4).toUpperCase() || "AUDIO";
+  }
+
+  const titleInput = document.getElementById("songTitle");
+  if (config.kind === "audio" && !titleInput.value.trim()) {
+    titleInput.value = titleFromFileName(file.name);
+  }
+}
+
+function resetAssetDropZones() {
+  resetAssetDropZone("coverDrop", "coverFileInput", "coverFileName", "coverPreview", "JPG, PNG, WEBP", "IMG");
+  resetAssetDropZone("audioDrop", "audioFileInput", "audioFileName", "audioPreview", "MP3, WAV, M4A", "MP3");
+
+  if (assetDropState.coverObjectUrl) {
+    URL.revokeObjectURL(assetDropState.coverObjectUrl);
+    assetDropState.coverObjectUrl = null;
+  }
+}
+
+function resetAssetDropZone(dropId, fileInputId, fileNameId, previewId, fileNameText, previewText) {
+  document.getElementById(dropId)?.classList.remove("has-file", "dragover");
+  document.getElementById(fileInputId).value = "";
+  document.getElementById(fileNameId).textContent = fileNameText;
+  document.getElementById(previewId).textContent = previewText;
+}
+
+function isExpectedAssetType(file, kind) {
+  const lowerName = file.name.toLowerCase();
+  if (kind === "cover") {
+    return file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(lowerName);
+  }
+  return file.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(lowerName);
+}
+
+function showAssetDropError(kind) {
+  const label = kind === "cover" ? "un'immagine" : "un file audio";
+  document.getElementById("uploadAlert").innerHTML =
+    `<div class="alert alert-error">Trascina ${label} valido.</div>`;
+}
+
+function titleFromFileName(fileName) {
+  return fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
 
 // ============================================================
 // STATISTICHE GLOBALI - classifica aggregata
