@@ -62,6 +62,7 @@ service cloud.firestore {
     // gli altri solo se isPublic. Admin legge tutto.
     match /brackets/{bracketId} {
       allow read: if isSignedIn() && (
+        resource == null ||
         resource.data.userId == request.auth.uid ||
         resource.data.isPublic == true ||
         isAdmin()
