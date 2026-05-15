@@ -61,7 +61,6 @@ async function loadOrStartTournament() {
   const q = query(
     collection(db, "tournaments"),
     where("status", "==", "active"),
-    orderBy("createdAt", "desc"),
     limit(1)
   );
   const snap = await getDocs(q);
