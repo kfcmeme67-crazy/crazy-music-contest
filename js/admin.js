@@ -3,17 +3,25 @@
 // ============================================================
 
 import { requireAdmin, logoutUser } from "./auth.js";
-import { db } from "./firebase-config.js";
+import { db, storage } from "./firebase-config.js";
 import {
   collection, query, where, orderBy, getDocs,
   doc, setDoc, updateDoc, deleteDoc,
   serverTimestamp, addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { getPersonalRanking, largestPowerOfTwo } from "./bracket.js";
+import {
+  ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
 const navLinks = document.getElementById("navLinks");
 let currentAdmin = null;
 let assetDropZonesReady = false;
+
+const FALLBACK_COVERS = [
+  "assets/covers/song1.svg",
+  "assets/covers/song2.svg"
+];
 
 requireAdmin(async (profile) => {
   currentAdmin = profile;
@@ -72,23 +80,41 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   try {
     const title = document.getElementById("songTitle").value.trim();
     const artist = document.getElementById("songArtist").value.trim();
-    const coverUrl = normalizeAssetUrl(document.getElementById("coverUrl").value, "Copertina");
-    const audioUrl = normalizeAssetUrl(document.getElementById("audioUrl").value, "Audio");
+    const coverInputValue = document.getElementById("coverUrl").value.trim();
+    const audioInputValue = document.getElementById("audioUrl").value.trim();
 
-    if (!title || !artist || !coverUrl || !audioUrl) {
-      throw new Error("Tutti i campi sono obbligatori");
+    if (!title || !artist) {
+      throw new Error("Titolo e artista sono obbligatori");
+    }
+
+    if (!assetDropState.audioFile && !audioInputValue) {
+      throw new Error("Carica un file audio oppure inserisci un link audio HTTPS");
     }
 
     // ID univoco
     const songId = `song_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Salva metadata
+    btn.textContent = "Upload audio...";
+    const audioUrl = assetDropState.audioFile
+      ? await uploadToFirebaseStorage(assetDropState.audioFile, `audio/${songId}-${safeStorageFileName(assetDropState.audioFile.name)}`)
+      : normalizeAssetUrl(audioInputValue, "Audio");
+
+    btn.textContent = "Upload copertina...";
+    const coverUrl = assetDropState.coverFile
+      ? await uploadToFirebaseStorage(assetDropState.coverFile, `covers/${songId}-${safeStorageFileName(assetDropState.coverFile.name)}`)
+      : (coverInputValue ? normalizeAssetUrl(coverInputValue, "Copertina") : getFallbackCover(songId));
+
+    btn.textContent = "Salvataggio database...";
+
+    // Salva metadata in Firestore. Il file vero sta in Firebase Storage.
     await setDoc(doc(db, "songs", songId), {
       id: songId,
       title,
       artist,
       coverUrl,
       audioUrl,
+      storageAudioPath: assetDropState.audioFile ? `audio/${songId}-${safeStorageFileName(assetDropState.audioFile.name)}` : "",
+      storageCoverPath: assetDropState.coverFile ? `covers/${songId}-${safeStorageFileName(assetDropState.coverFile.name)}` : "",
       createdAt: serverTimestamp()
     });
 
@@ -253,7 +279,9 @@ document.getElementById("createTournamentBtn").addEventListener("click", async (
 // ============================================================
 
 const assetDropState = {
-  coverObjectUrl: null
+  coverObjectUrl: null,
+  coverFile: null,
+  audioFile: null
 };
 
 function setupAssetDropZones() {
@@ -330,15 +358,19 @@ function handleAssetFile(file, config) {
   const preview = document.getElementById(config.previewId);
   const drop = document.getElementById(config.dropId);
 
-  pathInput.value = config.directory + encodeURIComponent(file.name);
+  pathInput.value = config.kind === "audio"
+    ? `Firebase Storage → audio/${file.name}`
+    : `Firebase Storage → covers/${file.name}`;
   fileName.textContent = file.name;
   drop.classList.add("has-file");
 
   if (config.kind === "cover") {
+    assetDropState.coverFile = file;
     if (assetDropState.coverObjectUrl) URL.revokeObjectURL(assetDropState.coverObjectUrl);
     assetDropState.coverObjectUrl = URL.createObjectURL(file);
     preview.innerHTML = `<img src="${assetDropState.coverObjectUrl}" alt="">`;
   } else {
+    assetDropState.audioFile = file;
     preview.textContent = file.name.split(".").pop()?.slice(0, 4).toUpperCase() || "AUDIO";
   }
 
@@ -356,6 +388,43 @@ function resetAssetDropZones() {
     URL.revokeObjectURL(assetDropState.coverObjectUrl);
     assetDropState.coverObjectUrl = null;
   }
+
+  assetDropState.coverFile = null;
+  assetDropState.audioFile = null;
+}
+
+async function uploadToFirebaseStorage(file, path) {
+  const storageRef = ref(storage, path);
+  const metadata = { contentType: file.type || guessContentType(file.name) };
+  await uploadBytes(storageRef, file, metadata);
+  return await getDownloadURL(storageRef);
+}
+
+function safeStorageFileName(fileName) {
+  return fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function guessContentType(fileName) {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  if (ext === "mp3") return "audio/mpeg";
+  if (ext === "wav") return "audio/wav";
+  if (ext === "m4a") return "audio/mp4";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return "application/octet-stream";
+}
+
+function getFallbackCover(songId) {
+  const n = Math.abs([...songId].reduce((acc, ch) => acc + ch.charCodeAt(0), 0));
+  return FALLBACK_COVERS[n % FALLBACK_COVERS.length];
+}
 }
 
 function resetAssetDropZone(dropId, fileInputId, fileNameId, previewId, fileNameText, previewText) {
