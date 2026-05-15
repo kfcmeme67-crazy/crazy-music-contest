@@ -1,31 +1,31 @@
 /* ============================================================
-   SONG TOURNAMENT - Dark Cyberpunk Theme
+   SONG TOURNAMENT - SoundCloud-inspired music platform theme
    ============================================================ */
 
 :root {
-  --bg-primary: #0a0a14;
-  --bg-secondary: #12121f;
-  --bg-tertiary: #1a1a2e;
-  --bg-card: #161625;
-  --border: #2a2a45;
-  --border-hover: #4a4a7e;
+  --bg-primary: #f2f2f2;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f7f7f7;
+  --bg-card: #ffffff;
+  --border: #dedede;
+  --border-hover: #ff6a22;
 
-  --text-primary: #e8e8ff;
-  --text-secondary: #a0a0c0;
-  --text-muted: #6a6a90;
+  --text-primary: #171717;
+  --text-secondary: #5f5f5f;
+  --text-muted: #8a8a8a;
 
-  --accent-cyan: #00f0ff;
-  --accent-magenta: #ff00aa;
-  --accent-violet: #8a4fff;
-  --accent-yellow: #ffd84a;
+  --accent-cyan: #ff5500;
+  --accent-magenta: #ff7a18;
+  --accent-violet: #111111;
+  --accent-yellow: #ffb000;
 
-  --success: #00ff9d;
-  --danger: #ff3860;
-  --warning: #ffaa00;
+  --success: #12805c;
+  --danger: #d92345;
+  --warning: #ff8a00;
 
-  --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.4);
-  --glow-magenta: 0 0 20px rgba(255, 0, 170, 0.4);
-  --glow-violet: 0 0 20px rgba(138, 79, 255, 0.4);
+  --glow-cyan: 0 10px 26px rgba(255, 85, 0, 0.22);
+  --glow-magenta: 0 10px 26px rgba(255, 122, 24, 0.22);
+  --glow-violet: 0 10px 26px rgba(0, 0, 0, 0.16);
 }
 
 * {
@@ -45,21 +45,22 @@ html, body {
 
 body {
   background-image:
-    radial-gradient(circle at 20% 10%, rgba(138, 79, 255, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(255, 0, 170, 0.1) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.05) 0%, transparent 60%);
+    linear-gradient(180deg, rgba(255, 85, 0, 0.12) 0, rgba(255, 122, 24, 0.08) 260px, transparent 520px),
+    linear-gradient(180deg, #ffffff 0, #f2f2f2 100%);
   background-attachment: fixed;
 }
 
-/* GRID DI SFONDO ANIMATO */
+/* SOTTILE TEXTURE TIPO WAVEFORM */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(138, 79, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 79, 255, 0.04) 1px, transparent 1px);
-  background-size: 50px 50px;
+    repeating-linear-gradient(90deg, rgba(255, 85, 0, 0.035) 0 2px, transparent 2px 14px),
+    linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+  background-size: 100% 180px, 100% 48px;
+  background-position: 0 120px, 0 0;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 55%);
   pointer-events: none;
   z-index: 0;
 }
@@ -73,11 +74,11 @@ h1, h2, h3, h4 {
 
 h1 {
   font-size: 2.5rem;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+  background: linear-gradient(135deg, #111111, var(--accent-cyan) 62%, var(--accent-magenta));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 40px rgba(0, 240, 255, 0.3);
+  text-shadow: none;
 }
 
 h2 { font-size: 1.75rem; color: var(--text-primary); }
@@ -96,21 +97,21 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 10, 20, 0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
+  background: #171717;
+  border-bottom: 3px solid var(--accent-cyan);
+  padding: 0.85rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
 }
 
 .navbar .logo {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+  background: linear-gradient(135deg, var(--accent-cyan), #ff9a2f);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -124,7 +125,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 }
 
 .navbar nav a {
-  color: var(--text-secondary);
+  color: #d6d6d6;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
@@ -132,20 +133,35 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 }
 
 .navbar nav a:hover {
-  color: var(--accent-cyan);
+  color: #ffffff;
+}
+
+.navbar nav .btn-secondary {
+  background: transparent;
+  border-color: #4a4a4a;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+}
+
+.navbar nav .btn-secondary:hover {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
 }
 
 /* CARD */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 1.5rem;
-  transition: border-color 0.2s, transform 0.2s;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .card:hover {
   border-color: var(--border-hover);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
 }
 
 /* BOTTONI */
@@ -155,34 +171,34 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 600;
   font-size: 0.95rem;
   font-family: inherit;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-primary);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
-  color: #000;
+  background: linear-gradient(180deg, #ff7a18, var(--accent-cyan));
+  color: #ffffff;
   font-weight: 700;
   box-shadow: var(--glow-cyan);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
+  box-shadow: 0 14px 30px rgba(255, 85, 0, 0.28);
 }
 
 .btn-secondary {
-  background: var(--bg-tertiary);
+  background: #ffffff;
   border-color: var(--border);
-  color: var(--text-primary);
+  color: #333333;
 }
 
 .btn-secondary:hover {
@@ -212,9 +228,9 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 .input, input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"] {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: var(--bg-secondary);
+  background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--text-primary);
   font-family: inherit;
   font-size: 0.95rem;
@@ -224,7 +240,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 .input:focus, input:focus {
   outline: none;
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 85, 0, 0.14);
 }
 
 .label {
@@ -234,7 +250,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
 .form-group {
@@ -244,26 +260,26 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 /* ALERT */
 .alert {
   padding: 0.875rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.9rem;
   margin-bottom: 1rem;
   border-left: 3px solid;
 }
 
 .alert-error {
-  background: rgba(255, 56, 96, 0.1);
+  background: rgba(217, 35, 69, 0.1);
   border-color: var(--danger);
   color: #ff7090;
 }
 
 .alert-success {
-  background: rgba(0, 255, 157, 0.1);
+  background: rgba(18, 128, 92, 0.1);
   border-color: var(--success);
   color: var(--success);
 }
 
 .alert-info {
-  background: rgba(0, 240, 255, 0.1);
+  background: rgba(255, 85, 0, 0.1);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }
@@ -295,7 +311,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 .badge {
   display: inline-block;
   padding: 0.25rem 0.625rem;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -303,15 +319,15 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 }
 
 .badge-cyan {
-  background: rgba(0, 240, 255, 0.15);
+  background: rgba(255, 85, 0, 0.12);
   color: var(--accent-cyan);
-  border: 1px solid rgba(0, 240, 255, 0.3);
+  border: 1px solid rgba(255, 85, 0, 0.3);
 }
 
 .badge-magenta {
-  background: rgba(255, 0, 170, 0.15);
+  background: rgba(17, 17, 17, 0.08);
   color: var(--accent-magenta);
-  border: 1px solid rgba(255, 0, 170, 0.3);
+  border: 1px solid rgba(255, 122, 24, 0.35);
 }
 
 /* RESPONSIVE */
@@ -319,5 +335,14 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   h1 { font-size: 1.75rem; }
   h2 { font-size: 1.35rem; }
   .container { padding: 1.5rem 1rem; }
-  .navbar { padding: 0.875rem 1rem; }
+  .navbar {
+    padding: 0.875rem 1rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .navbar nav {
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 }

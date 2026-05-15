@@ -25,7 +25,7 @@
     .round-name {
       font-size: 1.5rem;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      background: linear-gradient(135deg, #111111, var(--accent-cyan));
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -33,9 +33,9 @@
 
     .progress-bar {
       width: 100%;
-      height: 6px;
-      background: var(--bg-tertiary);
-      border-radius: 3px;
+      height: 8px;
+      background: #e5e5e5;
+      border-radius: 999px;
       overflow: hidden;
       margin-bottom: 2rem;
     }
@@ -44,7 +44,7 @@
       height: 100%;
       background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
       transition: width 0.4s ease;
-      box-shadow: var(--glow-cyan);
+      box-shadow: none;
     }
 
     .match-grid {
@@ -57,37 +57,42 @@
     .vs-divider {
       font-size: 1.5rem;
       font-weight: 800;
-      color: var(--accent-magenta);
-      text-shadow: var(--glow-magenta);
+      color: var(--accent-cyan);
+      text-shadow: none;
       letter-spacing: 0.1em;
     }
 
     .song-card {
       background: var(--bg-card);
-      border: 2px solid var(--border);
-      border-radius: 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
       padding: 1.25rem;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
       position: relative;
       overflow: hidden;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
     }
 
     .song-card::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      background: linear-gradient(180deg, rgba(255, 85, 0, 0.08), rgba(255, 122, 24, 0));
       opacity: 0;
       transition: opacity 0.3s;
       z-index: 0;
-      border-radius: 16px;
+      border-radius: 6px;
     }
 
     .song-card:hover {
       border-color: var(--accent-cyan);
-      transform: translateY(-4px);
-      box-shadow: var(--glow-cyan);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .song-card:hover::before {
+      opacity: 1;
     }
 
     .song-card.selected {
@@ -103,16 +108,16 @@
 
     @keyframes winnerPulse {
       0% { transform: scale(1); }
-      50% { transform: scale(1.05); box-shadow: 0 0 40px var(--accent-cyan); }
+      50% { transform: scale(1.04); box-shadow: 0 16px 34px rgba(255, 85, 0, 0.28); }
       100% { transform: scale(1); }
     }
 
     .song-cover {
       width: 100%;
       aspect-ratio: 1;
-      border-radius: 12px;
+      border-radius: 4px;
       object-fit: cover;
-      background: linear-gradient(135deg, var(--accent-violet), var(--accent-magenta));
+      background: linear-gradient(135deg, #111111, var(--accent-cyan));
       margin-bottom: 1rem;
       position: relative;
       z-index: 1;
@@ -138,9 +143,9 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      background: var(--bg-secondary);
+      background: #f7f7f7;
       padding: 0.625rem;
-      border-radius: 10px;
+      border-radius: 4px;
       border: 1px solid var(--border);
       position: relative;
       z-index: 1;
@@ -168,16 +173,20 @@
 
     .audio-progress {
       flex: 1;
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
+      height: 22px;
+      background:
+        repeating-linear-gradient(90deg, #d8d8d8 0 3px, transparent 3px 8px),
+        #efefef;
+      border-radius: 3px;
       cursor: pointer;
       overflow: hidden;
     }
 
     .audio-progress-fill {
       height: 100%;
-      background: var(--accent-cyan);
+      background:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.58) 0 3px, transparent 3px 8px),
+        linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
       width: 0%;
       transition: width 0.1s linear;
     }
