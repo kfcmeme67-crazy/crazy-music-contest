@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// ============================================================
+// REGOLE DI SICUREZZA FIRESTORE
+// ============================================================
+// Copia tutto questo file nella console Firebase:
+// Firestore Database -> Rules -> Pubblica
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Funzione helper: l'utente è admin?
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // USERS: ognuno legge il proprio profilo. Admin legge tutti.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Lettura della lista utenti solo per admin (per le statistiche)
+      allow list: if isAdmin();
+      // Creazione consentita al proprietario in fase di registrazione
+      allow create: if isOwner(userId) && request.resource.data.isAdmin == false;
+      // Update: nessuno può cambiare isAdmin da client (deve essere fatto in console)
+      allow update: if isOwner(userId) &&
+                       request.resource.data.isAdmin == resource.data.isAdmin;
+      allow delete: if false;
+    }
+
+    // USERNAMES: indice di unicità username
+    match /usernames/{username} {
+      allow read: if true; // serve per controllo duplicati in fase di registrazione
+      allow create: if isSignedIn() &&
+                       request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // SONGS: lettura libera per utenti loggati, scrittura solo admin
+    match /songs/{songId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // TOURNAMENTS: lettura per utenti loggati, scrittura solo admin
+    match /tournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // BRACKETS: ognuno gestisce il proprio. Lettura: il proprietario sempre,
+    // gli altri solo se isPublic. Admin legge tutto.
+    match /brackets/{bracketId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.isPublic == true ||
+        isAdmin()
+      );
+      // Per le query (list)
+      allow list: if isSignedIn();
+      // Creazione/update: solo il proprietario (il bracketId contiene l'uid)
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        // Il proprietario può modificare quasi tutto MA non i likes
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.likes == resource.data.likes) ||
+        // Chiunque può incrementare/decrementare likes di 1 (con doc like associato)
+        (request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['likes']))
+      );
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // LIKES: chiave = {userId}_{bracketId}, solo il proprietario
+    match /likes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       likeId == request.auth.uid + "_" + request.resource.data.bracketId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+  }
+}

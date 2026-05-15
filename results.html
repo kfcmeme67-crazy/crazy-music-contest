@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risultato · Song Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    .winner-banner {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(255, 0, 170, 0.1));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .winner-banner::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      background: conic-gradient(from 0deg, transparent, rgba(0, 240, 255, 0.1), transparent, rgba(255, 0, 170, 0.1), transparent);
+      animation: rotate 8s linear infinite;
+    }
+
+    @keyframes rotate {
+      to { transform: rotate(360deg); }
+    }
+
+    .winner-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .winner-cover {
+      width: 200px;
+      height: 200px;
+      border-radius: 16px;
+      object-fit: cover;
+      margin: 0 auto 1.5rem;
+      display: block;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.4);
+      border: 2px solid var(--accent-cyan);
+    }
+
+    .winner-trophy {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-artist {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+    }
+
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .ranking-row {
+      display: grid;
+      grid-template-columns: 50px 60px 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.875rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.2s;
+    }
+
+    .ranking-row:hover {
+      border-color: var(--border-hover);
+    }
+
+    .ranking-row.pos-1 {
+      border-color: var(--accent-yellow);
+      background: rgba(255, 216, 74, 0.05);
+    }
+
+    .ranking-row.pos-2 {
+      border-color: rgba(200, 200, 220, 0.4);
+    }
+
+    .ranking-row.pos-3 {
+      border-color: rgba(205, 127, 50, 0.5);
+    }
+
+    .position {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .pos-1 .position { color: var(--accent-yellow); }
+    .pos-2 .position { color: #c8c8dc; }
+    .pos-3 .position { color: #cd7f32; }
+
+    .ranking-cover {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .ranking-info {
+      min-width: 0;
+    }
+
+    .ranking-title {
+      font-weight: 600;
+      margin-bottom: 0.125rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ranking-artist {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .ranking-points {
+      text-align: right;
+      font-size: 0.9rem;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">◆ Song Tournament</a>
+    <nav id="navLinks"></nav>
+  </nav>
+
+  <div class="container">
+    <div id="loading" class="text-center">
+      <div class="spinner"></div>
+    </div>
+
+    <div id="noResult" class="hidden text-center" style="padding: 4rem 0;">
+      <h2>Nessun risultato</h2>
+      <p style="color: var(--text-secondary); margin: 1rem 0 2rem;">
+        Non hai ancora completato un torneo.
+      </p>
+      <a href="play.html" class="btn btn-primary">Inizia ora</a>
+    </div>
+
+    <div id="result" class="hidden">
+      <div class="winner-banner">
+        <div class="winner-content">
+          <div class="winner-trophy">🏆</div>
+          <p style="color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.85rem; margin-bottom: 1rem;">
+            La tua canzone vincente
+          </p>
+          <img id="winnerCover" class="winner-cover" alt="">
+          <h2 id="winnerTitle" class="winner-title"></h2>
+          <p id="winnerArtist" class="winner-artist"></p>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom: 1.25rem;">La tua classifica completa</h2>
+      <div id="rankingList" class="ranking-list"></div>
+
+      <div class="actions">
+        <a href="play.html" class="btn btn-primary">🎮 Rigioca</a>
+        <a href="rankings.html" class="btn btn-secondary">🏆 Vedi tutte le classifiche</a>
+        <button id="shareBtn" class="btn btn-secondary">🔗 Copia link</button>
+      </div>
+
+      <div id="visibilityControl" style="margin-top: 2rem; text-align: center;">
+        <label style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); cursor: pointer;">
+          <input type="checkbox" id="publicToggle" style="width: auto;">
+          Mostra la mia classifica nella bacheca pubblica
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logoutUser } from "./js/auth.js";
+    import { db } from "./js/firebase-config.js";
+    import {
+      collection, query, where, orderBy, limit, getDocs,
+      doc, getDoc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { getPersonalRanking } from "./js/bracket.js";
+
+    const navLinks = document.getElementById("navLinks");
+    const loadingEl = document.getElementById("loading");
+    const noResultEl = document.getElementById("noResult");
+    const resultEl = document.getElementById("result");
+
+    let currentBracketRef = null;
+
+    requireAuth(async (profile) => {
+      navLinks.innerHTML = `
+        <span style="color: var(--text-secondary); font-size: 0.85rem;">◉ ${profile.username}</span>
+        <a href="play.html">Gioca</a>
+        <a href="rankings.html">Classifiche</a>
+        ${profile.isAdmin ? '<a href="admin.html">Admin</a>' : ''}
+        <a href="#" id="logoutBtn">Esci</a>
+      `;
+      document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await logoutUser();
+        window.location.href = "index.html";
+      });
+
+      // Trova il torneo attivo
+      const tSnap = await getDocs(query(
+        collection(db, "tournaments"),
+        where("status", "==", "active"),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      ));
+
+      if (tSnap.empty) {
+        loadingEl.classList.add("hidden");
+        noResultEl.classList.remove("hidden");
+        return;
+      }
+
+      const tournamentId = tSnap.docs[0].id;
+      const bracketId = `${profile.uid}_${tournamentId}`;
+      currentBracketRef = doc(db, "brackets", bracketId);
+      const bSnap = await getDoc(currentBracketRef);
+
+      if (!bSnap.exists() || !bSnap.data().bracket.completed) {
+        loadingEl.classList.add("hidden");
+        noResultEl.classList.remove("hidden");
+        return;
+      }
+
+      const data = bSnap.data();
+      renderResults(data.bracket, data.isPublic);
+      loadingEl.classList.add("hidden");
+      resultEl.classList.remove("hidden");
+    });
+
+    function renderResults(bracket, isPublic) {
+      const winner = bracket.winner;
+      document.getElementById("winnerCover").src = winner.coverUrl;
+      document.getElementById("winnerTitle").textContent = winner.title;
+      document.getElementById("winnerArtist").textContent = winner.artist;
+
+      const ranking = getPersonalRanking(bracket);
+      const list = document.getElementById("rankingList");
+      list.innerHTML = ranking.map((entry, idx) => {
+        const pos = idx + 1;
+        const posClass = pos <= 3 ? `pos-${pos}` : "";
+        return `
+          <div class="ranking-row ${posClass}">
+            <div class="position">${pos}</div>
+            <img class="ranking-cover" src="${entry.song.coverUrl}" alt="">
+            <div class="ranking-info">
+              <div class="ranking-title">${escapeHtml(entry.song.title)}</div>
+              <div class="ranking-artist">${escapeHtml(entry.song.artist)}</div>
+            </div>
+            <div class="ranking-points">${entry.points} pt</div>
+          </div>
+        `;
+      }).join("");
+
+      const toggle = document.getElementById("publicToggle");
+      toggle.checked = isPublic !== false;
+      toggle.addEventListener("change", async () => {
+        await updateDoc(currentBracketRef, { isPublic: toggle.checked });
+      });
+
+      document.getElementById("shareBtn").addEventListener("click", () => {
+        navigator.clipboard.writeText(window.location.href);
+        const btn = document.getElementById("shareBtn");
+        const orig = btn.textContent;
+        btn.textContent = "✓ Copiato!";
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

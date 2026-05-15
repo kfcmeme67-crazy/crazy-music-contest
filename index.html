@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">◆ Song Tournament</a>
+    <nav id="navLinks">
+      <!-- popolato da JS -->
+    </nav>
+  </nav>
+
+  <div class="container">
+    <section class="text-center" style="padding: 4rem 0 3rem;">
+      <h1 style="font-size: 3.5rem; margin-bottom: 1rem;">Decidi tu<br>la migliore canzone</h1>
+      <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 2.5rem;">
+        Un torneo a eliminazione diretta dove tu sei il giudice.
+        Confronta le canzoni due alla volta fino a trovare la tua preferita.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="play.html" class="btn btn-primary" id="ctaPlay">
+          ▶ Inizia il torneo
+        </a>
+        <a href="rankings.html" class="btn btn-secondary">
+          🏆 Vedi le classifiche
+        </a>
+      </div>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 3rem;">
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◇</div>
+        <h3>Scegli ad ogni round</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Due canzoni per volta, ascolta entrambe e clicca la tua preferita per farla avanzare.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◆</div>
+        <h3>Vinci la finale</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Arriva fino alla finale e scopri qual è la canzone che ti rappresenta di più.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">◈</div>
+        <h3>Confronta con gli altri</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Condividi la tua classifica e metti like a quelle degli altri utenti.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { watchAuthState, logoutUser } from "./js/auth.js";
+
+    const navLinks = document.getElementById("navLinks");
+    const ctaPlay = document.getElementById("ctaPlay");
+
+    watchAuthState((profile) => {
+      if (profile) {
+        navLinks.innerHTML = `
+          <span style="color: var(--text-secondary); font-size: 0.85rem;">
+            ◉ ${profile.username}${profile.isAdmin ? ' <span class="badge badge-magenta">admin</span>' : ''}
+          </span>
+          <a href="play.html">Gioca</a>
+          <a href="rankings.html">Classifiche</a>
+          ${profile.isAdmin ? '<a href="admin.html">Admin</a>' : ''}
+          <a href="#" id="logoutBtn">Esci</a>
+        `;
+        document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+          e.preventDefault();
+          await logoutUser();
+          window.location.reload();
+        });
+        ctaPlay.href = "play.html";
+      } else {
+        navLinks.innerHTML = `
+          <a href="login.html">Accedi</a>
+          <a href="register.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Registrati</a>
+        `;
+        ctaPlay.href = "login.html";
+      }
+    });
+  </script>
+</body>
+</html>

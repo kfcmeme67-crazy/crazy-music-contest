@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classifiche · Song Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .bracket-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .bracket-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .username-tag {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .bracket-winner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .bracket-winner-cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .bracket-winner-info {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .bracket-winner-label {
+      font-size: 0.7rem;
+      color: var(--accent-yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .bracket-winner-title {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bracket-winner-artist {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top3 {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .top3-item {
+      flex: 1;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .top3-cover {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 0.25rem;
+    }
+
+    .top3-pos {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .like-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.5rem 0.875rem;
+      border-radius: 999px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .like-btn:hover {
+      border-color: var(--accent-magenta);
+      color: var(--accent-magenta);
+    }
+
+    .like-btn.liked {
+      background: rgba(255, 0, 170, 0.1);
+      border-color: var(--accent-magenta);
+      color: var(--accent-magenta);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">◆ Song Tournament</a>
+    <nav id="navLinks"></nav>
+  </nav>
+
+  <div class="container">
+    <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">Bacheca classifiche</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+      Le classifiche pubbliche degli altri utenti. Metti like a quelle che ti piacciono.
+    </p>
+
+    <div id="loading" class="text-center">
+      <div class="spinner"></div>
+    </div>
+
+    <div id="empty" class="hidden text-center" style="padding: 4rem 0;">
+      <h2>Nessuna classifica ancora</h2>
+      <p style="color: var(--text-secondary); margin: 1rem 0 2rem;">
+        Sii il primo a completare il torneo!
+      </p>
+      <a href="play.html" class="btn btn-primary">Gioca ora</a>
+    </div>
+
+    <div id="grid" class="grid hidden"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logoutUser } from "./js/auth.js";
+    import { db } from "./js/firebase-config.js";
+    import {
+      collection, query, where, orderBy, getDocs,
+      doc, getDoc, setDoc, deleteDoc, updateDoc, increment
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { getPersonalRanking } from "./js/bracket.js";
+
+    const navLinks = document.getElementById("navLinks");
+    const loadingEl = document.getElementById("loading");
+    const emptyEl = document.getElementById("empty");
+    const gridEl = document.getElementById("grid");
+
+    let currentUser = null;
+
+    requireAuth(async (profile) => {
+      currentUser = profile;
+      navLinks.innerHTML = `
+        <span style="color: var(--text-secondary); font-size: 0.85rem;">◉ ${profile.username}</span>
+        <a href="play.html">Gioca</a>
+        ${profile.isAdmin ? '<a href="admin.html">Admin</a>' : ''}
+        <a href="#" id="logoutBtn">Esci</a>
+      `;
+      document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await logoutUser();
+        window.location.href = "index.html";
+      });
+      await loadBrackets();
+    });
+
+    async function loadBrackets() {
+      // Bracket pubblici completati ordinati per like
+      const q = query(
+        collection(db, "brackets"),
+        where("isPublic", "==", true),
+        where("bracket.completed", "==", true)
+      );
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        loadingEl.classList.add("hidden");
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+
+      // Ordina lato client (Firestore non supporta orderBy su campi annidati senza index)
+      const brackets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      brackets.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+
+      // Per ogni bracket, controlla se l'utente ha già messo like
+      const likeChecks = await Promise.all(brackets.map(b =>
+        getDoc(doc(db, "likes", `${currentUser.uid}_${b.id}`))
+      ));
+
+      gridEl.innerHTML = brackets.map((b, i) => renderBracketCard(b, likeChecks[i].exists())).join("");
+
+      // Attacca event listener ai bottoni like
+      gridEl.querySelectorAll("[data-like]").forEach(btn => {
+        btn.addEventListener("click", () => toggleLike(btn));
+      });
+
+      loadingEl.classList.add("hidden");
+      gridEl.classList.remove("hidden");
+    }
+
+    function renderBracketCard(b, hasLiked) {
+      const ranking = getPersonalRanking(b.bracket).slice(0, 3);
+      const isOwn = b.userId === currentUser.uid;
+
+      return `
+        <div class="card bracket-card">
+          <div class="bracket-card-header">
+            <div class="username-tag">
+              ◉ ${escapeHtml(b.username || "anonimo")}
+              ${isOwn ? '<span class="badge badge-cyan" style="margin-left: 0.5rem;">tu</span>' : ''}
+            </div>
+            <button class="like-btn ${hasLiked ? 'liked' : ''}"
+                    data-like="${b.id}"
+                    data-liked="${hasLiked}"
+                    ${isOwn ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>
+              ♥ <span class="like-count">${b.likes || 0}</span>
+            </button>
+          </div>
+
+          <div class="bracket-winner">
+            <img class="bracket-winner-cover" src="${b.bracket.winner.coverUrl}" alt="">
+            <div class="bracket-winner-info">
+              <div class="bracket-winner-label">★ Vincitrice</div>
+              <div class="bracket-winner-title">${escapeHtml(b.bracket.winner.title)}</div>
+              <div class="bracket-winner-artist">${escapeHtml(b.bracket.winner.artist)}</div>
+            </div>
+          </div>
+
+          <div class="top3">
+            ${ranking.map((r, i) => `
+              <div class="top3-item">
+                <img class="top3-cover" src="${r.song.coverUrl}" alt="">
+                <div class="top3-pos">${i + 1}° · ${r.points}pt</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    async function toggleLike(btn) {
+      if (btn.disabled) return;
+      const bracketId = btn.dataset.like;
+      const liked = btn.dataset.liked === "true";
+      const likeRef = doc(db, "likes", `${currentUser.uid}_${bracketId}`);
+      const bracketRef = doc(db, "brackets", bracketId);
+      const countEl = btn.querySelector(".like-count");
+
+      try {
+        if (liked) {
+          await deleteDoc(likeRef);
+          await updateDoc(bracketRef, { likes: increment(-1) });
+          btn.classList.remove("liked");
+          btn.dataset.liked = "false";
+          countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
+        } else {
+          await setDoc(likeRef, {
+            userId: currentUser.uid,
+            bracketId,
+            createdAt: new Date()
+          });
+          await updateDoc(bracketRef, { likes: increment(1) });
+          btn.classList.add("liked");
+          btn.dataset.liked = "true";
+          countEl.textContent = parseInt(countEl.textContent) + 1;
+        }
+      } catch (err) {
+        console.error("Errore like:", err);
+      }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s || "";
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

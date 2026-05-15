@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// ============================================================
+// REGOLE DI SICUREZZA FIREBASE STORAGE
+// ============================================================
+// Configurazione opzionale, NON usata nel setup gratuito senza carta.
+// I nuovi progetti Firebase richiedono Blaze/pay-as-you-go per Cloud Storage.
+// Copia queste regole solo se in futuro decidi esplicitamente di usare Storage.
+// ============================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null &&
+             firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Copertine: lettura per utenti loggati, scrittura admin
+    match /covers/{file} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() &&
+                      request.resource.size < 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+    }
+
+    // Audio: lettura per utenti loggati, scrittura admin
+    match /audio/{file} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() &&
+                      request.resource.size < 20 * 1024 * 1024 &&
+                      request.resource.contentType.matches('audio/.*');
+    }
+  }
+}

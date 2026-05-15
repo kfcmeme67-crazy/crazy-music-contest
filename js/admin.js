@@ -1,0 +1,446 @@
+// ============================================================
+// ADMIN.JS - pannello amministratore
+// ============================================================
+
+import { requireAdmin, logoutUser } from "./auth.js";
+import { db } from "./firebase-config.js";
+import {
+  collection, query, where, orderBy, getDocs,
+  doc, setDoc, updateDoc, deleteDoc,
+  serverTimestamp, addDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getPersonalRanking, largestPowerOfTwo } from "./bracket.js";
+
+const navLinks = document.getElementById("navLinks");
+let currentAdmin = null;
+
+requireAdmin(async (profile) => {
+  currentAdmin = profile;
+  navLinks.innerHTML = `
+    <span style="color: var(--text-secondary); font-size: 0.85rem;">
+      ◉ ${profile.username} <span class="badge badge-magenta">admin</span>
+    </span>
+    <a href="play.html">Gioca</a>
+    <a href="rankings.html">Classifiche</a>
+    <a href="#" id="logoutBtn">Esci</a>
+  `;
+  document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+    await logoutUser();
+    window.location.href = "index.html";
+  });
+
+  setupTabs();
+  await loadSongs();
+  await loadActiveTournament();
+});
+
+// ============================================================
+// TABS
+// ============================================================
+
+function setupTabs() {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", async () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(`tab-${target}`).classList.add("active");
+
+      // Lazy load contenuti pesanti
+      if (target === "stats") await loadGlobalStats();
+      if (target === "users") await loadUserBrackets();
+    });
+  });
+}
+
+// ============================================================
+// CANZONI - URL/static assets e lista
+// ============================================================
+
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("uploadBtn");
+  const alertBox = document.getElementById("uploadAlert");
+  btn.disabled = true;
+  btn.textContent = "Salvataggio...";
+  alertBox.innerHTML = "";
+
+  try {
+    const title = document.getElementById("songTitle").value.trim();
+    const artist = document.getElementById("songArtist").value.trim();
+    const coverUrl = normalizeAssetUrl(document.getElementById("coverUrl").value, "Copertina");
+    const audioUrl = normalizeAssetUrl(document.getElementById("audioUrl").value, "Audio");
+
+    if (!title || !artist || !coverUrl || !audioUrl) {
+      throw new Error("Tutti i campi sono obbligatori");
+    }
+
+    // ID univoco
+    const songId = `song_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Salva metadata
+    await setDoc(doc(db, "songs", songId), {
+      id: songId,
+      title,
+      artist,
+      coverUrl,
+      audioUrl,
+      createdAt: serverTimestamp()
+    });
+
+    alertBox.innerHTML = `<div class="alert alert-success">Canzone aggiunta!</div>`;
+    document.getElementById("uploadForm").reset();
+    await loadSongs();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Aggiungi canzone";
+  }
+});
+
+async function loadSongs() {
+  const snap = await getDocs(query(collection(db, "songs"), orderBy("createdAt", "desc")));
+  const songs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById("songCount").textContent = songs.length;
+
+  const list = document.getElementById("songsList");
+  if (songs.length === 0) {
+    list.innerHTML = `<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+      Nessuna canzone caricata.
+    </p>`;
+    return;
+  }
+
+  list.innerHTML = songs.map(s => `
+    <div class="song-item" data-song-id="${s.id}">
+      <img class="song-item-cover" src="${s.coverUrl}" alt="">
+      <div class="song-item-info">
+        <input class="title-input" value="${escapeAttr(s.title)}" data-field="title">
+        <input class="artist-input" value="${escapeAttr(s.artist)}" data-field="artist">
+      </div>
+      <audio controls preload="none" style="height: 32px;">
+        <source src="${s.audioUrl}" type="audio/mpeg">
+      </audio>
+      <button class="btn btn-danger" data-delete="${s.id}" style="padding: 0.5rem 0.875rem;">
+        Elimina
+      </button>
+    </div>
+  `).join("");
+
+  // Salvataggio inline su blur
+  list.querySelectorAll("input[data-field]").forEach(input => {
+    input.addEventListener("blur", async () => {
+      const songId = input.closest(".song-item").dataset.songId;
+      const field = input.dataset.field;
+      await updateDoc(doc(db, "songs", songId), { [field]: input.value.trim() });
+    });
+  });
+
+  // Cancellazione
+  list.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const songId = btn.dataset.delete;
+      if (!confirm("Sicuro di voler eliminare questa canzone dal pool?")) return;
+      btn.disabled = true;
+      try {
+        await deleteDoc(doc(db, "songs", songId));
+        await loadSongs();
+      } catch (err) {
+        alert("Errore: " + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+// ============================================================
+// TORNEO - creazione e gestione
+// ============================================================
+
+async function loadActiveTournament() {
+  const snap = await getDocs(query(
+    collection(db, "tournaments"),
+    where("status", "==", "active")
+  ));
+
+  const info = document.getElementById("activeTournamentInfo");
+  if (snap.empty) {
+    info.innerHTML = `<p style="color: var(--text-secondary);">Nessun torneo attivo.</p>`;
+    return;
+  }
+
+  const t = { id: snap.docs[0].id, ...snap.docs[0].data() };
+  info.innerHTML = `
+    <p style="font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem;">${escapeHtml(t.name)}</p>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+      ${t.songs.length} canzoni · ${Math.log2(t.songs.length)} round
+    </p>
+    <button class="btn btn-danger" id="closeTournamentBtn">Chiudi torneo</button>
+  `;
+
+  document.getElementById("closeTournamentBtn").addEventListener("click", async () => {
+    if (!confirm("Sei sicuro di voler chiudere il torneo? Nessuno potrà più giocarlo.")) return;
+    await updateDoc(doc(db, "tournaments", t.id), {
+      status: "closed",
+      closedAt: serverTimestamp()
+    });
+    await loadActiveTournament();
+  });
+}
+
+document.getElementById("createTournamentBtn").addEventListener("click", async () => {
+  const alertBox = document.getElementById("tournamentAlert");
+  alertBox.innerHTML = "";
+  const name = document.getElementById("newTournamentName").value.trim() || "Torneo senza nome";
+
+  try {
+    // Verifica che non ci sia già un torneo attivo
+    const activeSnap = await getDocs(query(
+      collection(db, "tournaments"),
+      where("status", "==", "active")
+    ));
+    if (!activeSnap.empty) {
+      throw new Error("C'è già un torneo attivo. Chiudilo prima di crearne uno nuovo.");
+    }
+
+    // Carica le canzoni
+    const songsSnap = await getDocs(collection(db, "songs"));
+    let songs = songsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (songs.length < 2) {
+      throw new Error("Servono almeno 2 canzoni nel pool");
+    }
+
+    // Tronca alla potenza di 2 più vicina
+    const target = largestPowerOfTwo(songs.length);
+    songs = songs.slice(0, target);
+
+    // Estrai solo i campi necessari (denormalizzato per non dover rifare query in gioco)
+    const tournamentSongs = songs.map(s => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      coverUrl: s.coverUrl,
+      audioUrl: s.audioUrl
+    }));
+
+    await addDoc(collection(db, "tournaments"), {
+      name,
+      status: "active",
+      songs: tournamentSongs,
+      createdAt: serverTimestamp(),
+      createdBy: currentAdmin.uid
+    });
+
+    alertBox.innerHTML = `<div class="alert alert-success">
+      Torneo "${escapeHtml(name)}" creato con ${target} canzoni!
+    </div>`;
+    document.getElementById("newTournamentName").value = "";
+    await loadActiveTournament();
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+});
+
+// ============================================================
+// STATISTICHE GLOBALI - classifica aggregata
+// ============================================================
+
+async function loadGlobalStats() {
+  // Trova torneo attivo
+  const tSnap = await getDocs(query(
+    collection(db, "tournaments"),
+    where("status", "==", "active")
+  ));
+  if (tSnap.empty) {
+    document.getElementById("globalRanking").innerHTML =
+      `<p style="color: var(--text-secondary);">Nessun torneo attivo.</p>`;
+    return;
+  }
+  const tournamentId = tSnap.docs[0].id;
+
+  // Tutti i bracket completati per questo torneo
+  const bSnap = await getDocs(query(
+    collection(db, "brackets"),
+    where("tournamentId", "==", tournamentId),
+    where("bracket.completed", "==", true)
+  ));
+
+  const usersSnap = await getDocs(collection(db, "users"));
+  const songsSnap = await getDocs(collection(db, "songs"));
+
+  document.getElementById("statBrackets").textContent = bSnap.size;
+  document.getElementById("statUsers").textContent = usersSnap.size;
+  document.getElementById("statSongs").textContent = songsSnap.size;
+
+  if (bSnap.empty) {
+    document.getElementById("globalRanking").innerHTML =
+      `<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+        Nessun bracket completato ancora.
+      </p>`;
+    return;
+  }
+
+  // Aggregazione: per ogni canzone, somma i punti accumulati su tutti gli utenti
+  const songStats = new Map();
+
+  bSnap.docs.forEach(d => {
+    const bracket = d.data().bracket;
+    const ranking = getPersonalRanking(bracket);
+    ranking.forEach(entry => {
+      const id = entry.song.id;
+      if (!songStats.has(id)) {
+        songStats.set(id, {
+          song: entry.song,
+          totalPoints: 0,
+          appearances: 0,
+          wins: 0
+        });
+      }
+      const s = songStats.get(id);
+      s.totalPoints += entry.points;
+      s.appearances += 1;
+      if (bracket.winner.id === id) s.wins += 1;
+    });
+  });
+
+  const ranking = [...songStats.values()]
+    .map(s => ({
+      ...s,
+      avgPoints: s.totalPoints / s.appearances
+    }))
+    .sort((a, b) => {
+      if (b.avgPoints !== a.avgPoints) return b.avgPoints - a.avgPoints;
+      return b.wins - a.wins;
+    });
+
+  document.getElementById("globalRanking").innerHTML = ranking.map((s, idx) => {
+    const pos = idx + 1;
+    const goldClass = pos === 1 ? "gold" : "";
+    return `
+      <div class="global-ranking-row ${goldClass}">
+        <div style="font-size: 1.5rem; font-weight: 800; text-align: center; color: ${pos <= 3 ? 'var(--accent-yellow)' : 'var(--text-muted)'};">
+          ${pos}
+        </div>
+        <img src="${s.song.coverUrl}" style="width: 60px; height: 60px; border-radius: 6px; object-fit: cover;" alt="">
+        <div>
+          <div style="font-weight: 600;">${escapeHtml(s.song.title)}</div>
+          <div style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(s.song.artist)}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">PUNTI MEDI</div>
+          <div style="font-weight: 700; color: var(--accent-cyan);">${s.avgPoints.toFixed(2)}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">VITTORIE</div>
+          <div style="font-weight: 700; color: var(--accent-magenta);">${s.wins}/${s.appearances}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ============================================================
+// BRACKET DEI SINGOLI UTENTI
+// ============================================================
+
+async function loadUserBrackets() {
+  const tSnap = await getDocs(query(
+    collection(db, "tournaments"),
+    where("status", "==", "active")
+  ));
+  if (tSnap.empty) {
+    document.getElementById("userBrackets").innerHTML =
+      `<p style="color: var(--text-secondary);">Nessun torneo attivo.</p>`;
+    return;
+  }
+  const tournamentId = tSnap.docs[0].id;
+
+  const bSnap = await getDocs(query(
+    collection(db, "brackets"),
+    where("tournamentId", "==", tournamentId)
+  ));
+
+  if (bSnap.empty) {
+    document.getElementById("userBrackets").innerHTML =
+      `<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+        Nessun utente ha ancora iniziato il torneo.
+      </p>`;
+    return;
+  }
+
+  const brackets = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  brackets.sort((a, b) => {
+    if (a.bracket.completed !== b.bracket.completed) return a.bracket.completed ? -1 : 1;
+    return 0;
+  });
+
+  document.getElementById("userBrackets").innerHTML = brackets.map(b => {
+    const status = b.bracket.completed
+      ? `<span class="badge badge-cyan">completato</span>`
+      : `<span class="badge badge-magenta">in corso · ${b.bracket.currentRound + 1}/${b.bracket.totalRounds}</span>`;
+
+    let winnerHtml = "";
+    if (b.bracket.completed && b.bracket.winner) {
+      winnerHtml = `
+        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; margin-top: 0.75rem;">
+          <img src="${b.bracket.winner.coverUrl}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;" alt="">
+          <div style="min-width: 0;">
+            <div style="font-size: 0.7rem; color: var(--accent-yellow); font-weight: 700; text-transform: uppercase;">★ Vincitrice</div>
+            <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(b.bracket.winner.title)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="card" style="margin-bottom: 0.875rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 600; font-size: 1rem;">◉ ${escapeHtml(b.username || 'utente sconosciuto')}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Bracket ${b.bracket.size} canzoni · ${b.likes || 0} like
+            </div>
+          </div>
+          ${status}
+        </div>
+        ${winnerHtml}
+      </div>
+    `;
+  }).join("");
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s || "";
+  return div.innerHTML;
+}
+function escapeAttr(s) {
+  return (s || "").replace(/"/g, "&quot;");
+}
+
+function normalizeAssetUrl(value, label) {
+  const raw = value.trim();
+  if (!raw) return "";
+
+  if (/^http:\/\//i.test(raw) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(raw)) {
+    throw new Error(`${label}: usa HTTPS o un percorso relativo in assets/`);
+  }
+
+  if (/^https:\/\//i.test(raw) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(raw)) {
+    return raw;
+  }
+
+  if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../") || raw.startsWith("assets/")) {
+    return raw;
+  }
+
+  throw new Error(`${label}: usa un URL HTTPS oppure un percorso tipo assets/audio/brano.mp3`);
+}

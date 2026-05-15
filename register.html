@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrati · Song Tournament</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="logo">◆ Song Tournament</a>
+  </nav>
+
+  <div class="container" style="max-width: 440px; padding-top: 4rem;">
+    <div class="card" style="padding: 2.5rem 2rem;">
+      <h2 style="margin-bottom: 0.5rem;">Crea account</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+        Scegli un username e una password.
+      </p>
+
+      <div id="alertContainer"></div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label class="label" for="username">Username</label>
+          <input type="text" id="username" required minlength="3" maxlength="20"
+                 pattern="[a-z0-9_]+" autocomplete="username"
+                 placeholder="es. jason_dev">
+          <small style="color: var(--text-muted); font-size: 0.8rem;">
+            3-20 caratteri, solo lettere minuscole, numeri e underscore
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="label" for="password">Password</label>
+          <input type="password" id="password" required minlength="6" autocomplete="new-password">
+          <small style="color: var(--text-muted); font-size: 0.8rem;">Minimo 6 caratteri</small>
+        </div>
+
+        <div class="form-group">
+          <label class="label" for="passwordConfirm">Conferma password</label>
+          <input type="password" id="passwordConfirm" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+          Crea account
+        </button>
+      </form>
+
+      <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+        Hai già un account?
+        <a href="login.html" style="color: var(--accent-cyan); text-decoration: none; font-weight: 500;">Accedi</a>
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { registerUser, watchAuthState } from "./js/auth.js";
+
+    watchAuthState((profile) => {
+      if (profile) window.location.href = "play.html";
+    });
+
+    const form = document.getElementById("registerForm");
+    const alertBox = document.getElementById("alertContainer");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alertBox.innerHTML = "";
+
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("passwordConfirm").value;
+
+      if (password !== confirm) {
+        alertBox.innerHTML = `<div class="alert alert-error">Le password non coincidono</div>`;
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creazione account...";
+
+      try {
+        await registerUser(username, password);
+        window.location.href = "play.html";
+      } catch (err) {
+        let msg = err.message || "Errore durante la registrazione";
+        if (err.code === "auth/email-already-in-use") msg = "Username già in uso";
+        alertBox.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Crea account";
+      }
+    });
+  </script>
+</body>
+</html>
