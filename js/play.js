@@ -59,12 +59,17 @@ function renderNav(profile) {
 async function loadOrStartTournament() {
   try {
     // 1. Trova torneo attivo
-    const q = query(
-      collection(db, "tournaments"),
-      where("status", "==", "active"),
-      limit(1)
-    );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(
+        collection(db, "tournaments"),
+        where("status", "==", "active"),
+        limit(1)
+      );
+      snap = await getDocs(q);
+    } catch (e) {
+      throw new Error("Errore durante la lettura di TOURNAMENTS: " + e.message);
+    }
 
     if (snap.empty) {
       loadingEl.classList.add("hidden");
@@ -79,7 +84,12 @@ async function loadOrStartTournament() {
     // 2. Verifica se l'utente ha già un bracket per questo torneo
     const bracketId = `${currentUser.uid}_${currentTournamentId}`;
     const bracketRef = doc(db, "brackets", bracketId);
-    const bracketSnap = await getDoc(bracketRef);
+    let bracketSnap;
+    try {
+      bracketSnap = await getDoc(bracketRef);
+    } catch (e) {
+      throw new Error("Errore durante la LETTURA del tuo BRACKET in corso: " + e.message);
+    }
 
     if (bracketSnap.exists()) {
       const data = bracketSnap.data();
@@ -133,17 +143,21 @@ async function startNew(tournament) {
 }
 
 async function saveBracket() {
-  const bracketId = `${currentUser.uid}_${currentTournamentId}`;
-  await setDoc(doc(db, "brackets", bracketId), {
-    userId: currentUser.uid,
-    username: currentUser.username,
-    tournamentId: currentTournamentId,
-    bracket: currentBracket,
-    isPublic: true,
-    likes: 0,
-    updatedAt: serverTimestamp(),
-    completedAt: currentBracket.completed ? serverTimestamp() : null
-  }, { merge: true });
+  try {
+    const bracketId = `${currentUser.uid}_${currentTournamentId}`;
+    await setDoc(doc(db, "brackets", bracketId), {
+      userId: currentUser.uid,
+      username: currentUser.username,
+      tournamentId: currentTournamentId,
+      bracket: currentBracket,
+      isPublic: true,
+      likes: 0,
+      updatedAt: serverTimestamp(),
+      completedAt: currentBracket.completed ? serverTimestamp() : null
+    }, { merge: true });
+  } catch (e) {
+    throw new Error("Errore durante il SALVATAGGIO del bracket (creazione/aggiornamento): " + e.message);
+  }
 }
 
 // ============================================================
