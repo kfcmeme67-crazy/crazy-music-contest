@@ -57,45 +57,53 @@ function renderNav(profile) {
  * 4. Altrimenti crea un nuovo bracket e lo salva
  */
 async function loadOrStartTournament() {
-  // 1. Trova torneo attivo
-  const q = query(
-    collection(db, "tournaments"),
-    where("status", "==", "active"),
-    limit(1)
-  );
-  const snap = await getDocs(q);
+  try {
+    // 1. Trova torneo attivo
+    const q = query(
+      collection(db, "tournaments"),
+      where("status", "==", "active"),
+      limit(1)
+    );
+    const snap = await getDocs(q);
 
-  if (snap.empty) {
-    loadingEl.classList.add("hidden");
-    noTournamentEl.classList.remove("hidden");
-    return;
-  }
-
-  const tournamentDoc = snap.docs[0];
-  currentTournamentId = tournamentDoc.id;
-  const tournament = tournamentDoc.data();
-
-  // 2. Verifica se l'utente ha già un bracket per questo torneo
-  const bracketId = `${currentUser.uid}_${currentTournamentId}`;
-  const bracketRef = doc(db, "brackets", bracketId);
-  const bracketSnap = await getDoc(bracketRef);
-
-  if (bracketSnap.exists()) {
-    const data = bracketSnap.data();
-    if (data.bracket.completed) {
+    if (snap.empty) {
       loadingEl.classList.add("hidden");
-      alreadyPlayedEl.classList.remove("hidden");
-      document.getElementById("restartBtn").addEventListener("click", () => startNew(tournament));
+      noTournamentEl.classList.remove("hidden");
       return;
     }
-    // Riprende il bracket in corso
-    currentBracket = data.bracket;
-    showArena();
-    return;
-  }
 
-  // 3. Crea un nuovo bracket
-  await startNew(tournament);
+    const tournamentDoc = snap.docs[0];
+    currentTournamentId = tournamentDoc.id;
+    const tournament = tournamentDoc.data();
+
+    // 2. Verifica se l'utente ha già un bracket per questo torneo
+    const bracketId = `${currentUser.uid}_${currentTournamentId}`;
+    const bracketRef = doc(db, "brackets", bracketId);
+    const bracketSnap = await getDoc(bracketRef);
+
+    if (bracketSnap.exists()) {
+      const data = bracketSnap.data();
+      if (data.bracket.completed) {
+        loadingEl.classList.add("hidden");
+        alreadyPlayedEl.classList.remove("hidden");
+        document.getElementById("restartBtn").addEventListener("click", () => startNew(tournament));
+        return;
+      }
+      // Riprende il bracket in corso
+      currentBracket = data.bracket;
+      showArena();
+      return;
+    }
+
+    // 3. Crea un nuovo bracket
+    await startNew(tournament);
+  } catch (err) {
+    loadingEl.innerHTML = `<div style="color: red; background: #220000; padding: 20px; border: 1px solid red; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: left;">
+      <h3 style="margin-top: 0;">Errore Critico Firebase</h3>
+      <p style="font-family: monospace;">${err.message}</p>
+      <p style="font-size: 0.9rem; margin-top: 10px;">Se vedi "Missing or insufficient permissions", significa che NON hai incollato le nuove regole nel pannello di Firebase come richiesto precedentemente!</p>
+    </div>`;
+  }
 }
 
 async function startNew(tournament) {
