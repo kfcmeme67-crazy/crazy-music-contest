@@ -137,9 +137,18 @@ async function startNew(tournament) {
   // Tutti gli utenti giocano LE STESSE canzoni nello STESSO ORDINE
   // (l'admin imposta l'ordine al momento dell'attivazione del torneo)
   if (!isPowerOfTwo(songs.length)) {
-    // Fallback: prendi le prime N dove N è potenza di 2 più vicina
-    const target = largestPowerOfTwo(songs.length);
-    songs = songs.slice(0, target);
+    // Invece di tagliare le canzoni, aggiungiamo delle canzoni "Jolly" per arrivare alla potenza di 2 successiva!
+    const target = Math.pow(2, Math.ceil(Math.log2(songs.length)));
+    const missing = target - songs.length;
+    for (let i = 0; i < missing; i++) {
+      songs.push({
+        id: "jolly_" + i + "_" + Date.now(),
+        title: "🎵 CANZONE JOLLY " + (i + 1),
+        artist: "Passaggio turno automatico",
+        coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=200&q=80",
+        audioUrl: ""
+      });
+    }
   }
 
   if (songs.length < 2) {
@@ -242,6 +251,11 @@ function setupAudio(letter) {
 
   playBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    
+    // Non suonare nulla se è una canzone Jolly senza audio
+    const audioSrc = audio.getAttribute("src");
+    if (!audioSrc || audioSrc === window.location.href) return;
+
     // Pausa l'altro audio
     const other = letter === "A" ? "B" : "A";
     const otherAudio = document.getElementById("audio" + other);
