@@ -14,18 +14,19 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "INSERISCI-QUI",
-  authDomain: "INSERISCI-QUI.firebaseapp.com",
-  projectId: "INSERISCI-QUI",
-  storageBucket: "INSERISCI-QUI.appspot.com",
-  messagingSenderId: "INSERISCI-QUI",
-  appId: "INSERISCI-QUI"
+  apiKey: "AIzaSyAttUthMmWOxCCapvaSoWUbqB-gtKN-Rcc",
+  authDomain: "crazy-music-contest.firebaseapp.com",
+  projectId: "crazy-music-contest",
+  storageBucket: "crazy-music-contest.firebasestorage.app",
+  messagingSenderId: "134249760147",
+  appId: "1:134249760147:web:d2988d5a4e33a6fb671466",
+  measurementId: "G-H10LLZJWSC"
 };
 
 // ============================================================
 // EMAIL ADMIN: cambia con la tua email
 // ============================================================
-export const ADMIN_EMAIL = "admin@songtournament.com";
+export const ADMIN_EMAIL = "kfcmeme67@gmail.com";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
