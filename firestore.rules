@@ -61,26 +61,8 @@ service cloud.firestore {
     // BRACKETS: ognuno gestisce il proprio. Lettura: il proprietario sempre,
     // gli altri solo se isPublic. Admin legge tutto.
     match /brackets/{bracketId} {
-      allow read: if isSignedIn() && (
-        resource == null ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.isPublic == true ||
-        isAdmin()
-      );
-      // Per le query (list)
-      allow list: if isSignedIn();
-      // Creazione/update: solo il proprietario (il bracketId contiene l'uid)
-      allow create: if isSignedIn() &&
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && (
-        // Il proprietario può modificare quasi tutto MA non i likes
-        (resource.data.userId == request.auth.uid &&
-         request.resource.data.likes == resource.data.likes) ||
-        // Chiunque può incrementare/decrementare likes di 1 (con doc like associato)
-        (request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['likes']))
-      );
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // LIKES: chiave = {userId}_{bracketId}, solo il proprietario
