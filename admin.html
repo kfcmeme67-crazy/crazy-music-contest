@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin · Song Tournament</title>
+  <title>Admin - CRAZY_MUSIC Tournament</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <style>
@@ -168,7 +168,7 @@
 </head>
 <body>
   <nav class="navbar">
-    <a href="index.html" class="logo">◆ Song Tournament</a>
+    <a href="index.html" class="logo">CRAZY_MUSIC</a>
     <nav id="navLinks"></nav>
   </nav>
 
@@ -193,14 +193,14 @@
         <form id="uploadForm">
           <div class="form-group">
             <label class="label">Titolo</label>
-            <input type="text" id="songTitle" required>
+            <input type="text" id="songTitle" placeholder="es. MIAO MIAO ZBB ZBB" required>
           </div>
           <div class="form-group">
             <label class="label">Artista</label>
-            <input type="text" id="songArtist" required>
+            <input type="text" id="songArtist" value="CRAZY_MUSIC" required>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
             <div class="form-group">
               <label class="label">URL copertina</label>
               <input type="text" id="coverUrl" placeholder="assets/covers/copertina.jpg" required>
@@ -244,7 +244,7 @@
         </p>
         <div class="form-group">
           <label class="label">Nome torneo</label>
-          <input type="text" id="newTournamentName" placeholder="es. Hit della primavera 2026">
+          <input type="text" id="newTournamentName" placeholder="es. CRAZY_MUSIC SoundCloud contest">
         </div>
         <button class="btn btn-primary" id="createTournamentBtn">
           Crea e attiva torneo

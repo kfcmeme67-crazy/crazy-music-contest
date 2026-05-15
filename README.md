@@ -1,6 +1,14 @@
-# Song Tournament
+# CRAZY_MUSIC Tournament
 
-Torneo a eliminazione diretta in cui gli utenti scelgono la canzone migliore round dopo round. Il sito e' statico, usa Firebase solo per login, Firestore e dati del torneo, ed e' pronto per GitHub Pages.
+Torneo a eliminazione diretta ispirato al profilo SoundCloud `CRAZY_MUSIC`. Il sito e' statico, usa Firebase solo per login, Firestore e dati del torneo, ed e' pronto per GitHub Pages.
+
+## Reference SoundCloud
+
+- Profilo: `https://soundcloud.com/crazy_music-270687487`
+- Utente: `CRAZY_MUSIC`
+- Location pubblica: Milan
+- Tracce pubbliche rilevate: 20
+- Titoli usati come reference: `PICCHIO UN TROIA (parodia/cover gotta feeling)`, `MIAO MIAO ZBB ZBB`, `BUK A CASO`, `DANNI DA COKE`, `P. D. C. T. G. R.`
 
 ## Obiettivo: hosting gratis senza carta
 

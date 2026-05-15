@@ -3,24 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Song Tournament</title>
+  <title>CRAZY_MUSIC Tournament</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 </head>
 <body>
   <nav class="navbar">
-    <a href="index.html" class="logo">◆ Song Tournament</a>
+    <a href="index.html" class="logo">CRAZY_MUSIC</a>
     <nav id="navLinks">
       <!-- popolato da JS -->
     </nav>
   </nav>
 
   <div class="container">
-    <section class="text-center" style="padding: 4rem 0 3rem;">
-      <h1 style="font-size: 3.5rem; margin-bottom: 1rem;">Decidi tu<br>la migliore canzone</h1>
+    <section class="text-center" style="padding: 4rem 0 2rem;">
+      <div style="display: inline-flex; align-items: center; gap: 0.65rem; padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-cyan); background: rgba(255, 85, 0, 0.08); margin-bottom: 1.25rem; font-weight: 700; font-size: 0.85rem;">
+        SoundCloud reference: @crazy_music-270687487
+      </div>
+      <h1 style="font-size: clamp(2.35rem, 8vw, 3.5rem); margin-bottom: 1rem;">CRAZY_MUSIC<br>song tournament</h1>
       <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 2.5rem;">
-        Un torneo a eliminazione diretta dove tu sei il giudice.
-        Confronta le canzoni due alla volta fino a trovare la tua preferita.
+        Vota i brani del profilo CRAZY_MUSIC in un torneo a eliminazione diretta.
+        Ascolta, scegli, elimina e trova la traccia piu forte.
       </p>
       <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <a href="play.html" class="btn btn-primary" id="ctaPlay">
@@ -29,6 +32,28 @@
         <a href="rankings.html" class="btn btn-secondary">
           🏆 Vedi le classifiche
         </a>
+      </div>
+    </section>
+
+    <section class="card soundcloud-profile-card" style="display: grid; grid-template-columns: minmax(220px, 0.85fr) 1.4fr; gap: 1.5rem; align-items: stretch; margin: 2rem auto 0; max-width: 980px;">
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <img src="https://i1.sndcdn.com/avatars-9tDUNEYeeIRy86oS-Vwszcw-t500x500.jpg" alt="CRAZY_MUSIC avatar" style="width: 92px; height: 92px; border-radius: 8px; object-fit: cover; border: 2px solid var(--accent-cyan); box-shadow: var(--glow-cyan);">
+        <div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800;">SoundCloud user</div>
+          <h2 style="margin: 0.25rem 0;">CRAZY_MUSIC</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Milan - 20 tracce pubbliche</p>
+          <a href="https://soundcloud.com/crazy_music-270687487" target="_blank" rel="noopener" style="display: inline-block; color: var(--accent-cyan); margin-top: 0.65rem; text-decoration: none; font-weight: 700;">Apri profilo SoundCloud</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; margin-bottom: 0.8rem;">Track reference</div>
+        <div style="display: grid; gap: 0.55rem;">
+          <div class="track-reference-row"><span>01</span><strong>PICCHIO UN TROIA (parodia/cover gotta feeling)</strong></div>
+          <div class="track-reference-row"><span>02</span><strong>MIAO MIAO ZBB ZBB</strong></div>
+          <div class="track-reference-row"><span>03</span><strong>BUK A CASO</strong></div>
+          <div class="track-reference-row"><span>04</span><strong>DANNI DA COKE</strong></div>
+          <div class="track-reference-row"><span>05</span><strong>P. D. C. T. G. R.</strong></div>
+        </div>
       </div>
     </section>
 

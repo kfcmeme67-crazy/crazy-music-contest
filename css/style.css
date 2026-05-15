@@ -1,22 +1,22 @@
 /* ============================================================
-   SONG TOURNAMENT - SoundCloud-inspired music platform theme
+   CRAZY_MUSIC Tournament - SoundCloud-inspired dark music platform theme
    ============================================================ */
 
 :root {
-  --bg-primary: #f2f2f2;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f7f7f7;
-  --bg-card: #ffffff;
-  --border: #dedede;
+  --bg-primary: #0d0d0f;
+  --bg-secondary: #151518;
+  --bg-tertiary: #202024;
+  --bg-card: #18181c;
+  --border: #303035;
   --border-hover: #ff6a22;
 
-  --text-primary: #171717;
-  --text-secondary: #5f5f5f;
-  --text-muted: #8a8a8a;
+  --text-primary: #f6f6f6;
+  --text-secondary: #b7b7bd;
+  --text-muted: #777780;
 
   --accent-cyan: #ff5500;
   --accent-magenta: #ff7a18;
-  --accent-violet: #111111;
+  --accent-violet: #f6f6f6;
   --accent-yellow: #ffb000;
 
   --success: #12805c;
@@ -25,7 +25,7 @@
 
   --glow-cyan: 0 10px 26px rgba(255, 85, 0, 0.22);
   --glow-magenta: 0 10px 26px rgba(255, 122, 24, 0.22);
-  --glow-violet: 0 10px 26px rgba(0, 0, 0, 0.16);
+  --glow-violet: 0 10px 26px rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -45,8 +45,9 @@ html, body {
 
 body {
   background-image:
-    linear-gradient(180deg, rgba(255, 85, 0, 0.12) 0, rgba(255, 122, 24, 0.08) 260px, transparent 520px),
-    linear-gradient(180deg, #ffffff 0, #f2f2f2 100%);
+    radial-gradient(circle at 24% 8%, rgba(255, 85, 0, 0.24) 0, transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(255, 122, 24, 0.12) 0, transparent 30%),
+    linear-gradient(180deg, #171717 0, #0d0d0f 48%, #09090a 100%);
   background-attachment: fixed;
 }
 
@@ -56,8 +57,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    repeating-linear-gradient(90deg, rgba(255, 85, 0, 0.035) 0 2px, transparent 2px 14px),
-    linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+    repeating-linear-gradient(90deg, rgba(255, 85, 0, 0.08) 0 2px, transparent 2px 14px),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size: 100% 180px, 100% 48px;
   background-position: 0 120px, 0 0;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 55%);
@@ -74,7 +75,7 @@ h1, h2, h3, h4 {
 
 h1 {
   font-size: 2.5rem;
-  background: linear-gradient(135deg, #111111, var(--accent-cyan) 62%, var(--accent-magenta));
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan) 62%, var(--accent-magenta));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -97,7 +98,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #171717;
+  background: #0b0b0d;
   border-bottom: 3px solid var(--accent-cyan);
   padding: 0.85rem 2rem;
   display: flex;
@@ -155,13 +156,41 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 1.5rem;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .card:hover {
   border-color: var(--border-hover);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.28);
+}
+
+.soundcloud-profile-card {
+  background:
+    linear-gradient(135deg, rgba(255, 85, 0, 0.12), rgba(255, 122, 24, 0.04)),
+    var(--bg-card);
+}
+
+.track-reference-row {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.track-reference-row span {
+  color: var(--accent-cyan);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.track-reference-row strong {
+  color: var(--text-primary);
+  font-size: 0.92rem;
 }
 
 /* BOTTONI */
@@ -196,9 +225,9 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 }
 
 .btn-secondary {
-  background: #ffffff;
+  background: #202024;
   border-color: var(--border);
-  color: #333333;
+  color: var(--text-primary);
 }
 
 .btn-secondary:hover {
@@ -228,7 +257,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 .input, input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"] {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: #ffffff;
+  background: #111114;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-primary);
@@ -325,7 +354,7 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
 }
 
 .badge-magenta {
-  background: rgba(17, 17, 17, 0.08);
+  background: rgba(255, 122, 24, 0.12);
   color: var(--accent-magenta);
   border: 1px solid rgba(255, 122, 24, 0.35);
 }
@@ -344,5 +373,8 @@ h3 { font-size: 1.25rem; color: var(--text-primary); }
     gap: 0.75rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+  .soundcloud-profile-card {
+    grid-template-columns: 1fr !important;
   }
 }
